@@ -1,0 +1,39 @@
+.wrap { position:relative; display:flex; flex-direction:column; height:100%; min-height:240px; }
+.map { flex:1; min-height:200px; width:100%; background:var(--nq-surface); }
+.controls { display:flex; gap:4px; padding:4px; }
+.controls button, .group button, .notice button { min-height:44px; min-width:44px; font:inherit; }
+.marker { display:inline-flex; align-items:center; justify-content:center; gap:4px; box-sizing:border-box; padding:0; border-radius:10px; cursor:pointer; font:700 12px/1 system-ui; font-variant-numeric:tabular-nums; }
+.marker svg { flex:none; }
+.marker:focus-visible { outline:3px solid #246abb; outline-offset:3px; }
+.notice { position:absolute; z-index:5; inset:65px 12px auto; background:var(--nq-surface); padding:16px; border:1px solid var(--nq-line); }
+.group { position:absolute; z-index:5; left:10px; right:60px; bottom:10px; display:grid; grid-template-rows:auto minmax(0,1fr); max-height:min(260px,calc(100% - 20px)); overflow:hidden; background:var(--nq-surface); border:1px solid var(--nq-line); }
+.groupHeader { display:flex; align-items:center; justify-content:space-between; min-width:0; padding:4px 4px 4px 14px; border-bottom:1px solid var(--nq-line); }
+.groupHeader strong { font-size:13px; }
+.group .groupClose { display:grid; place-items:center; width:44px; height:44px; padding:0; border:0; background:transparent; color:var(--nq-muted); }
+.groupItems { overflow:auto; overscroll-behavior:contain; min-height:0; }
+.groupItems button { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; min-height:48px; padding:12px 14px; border:0; border-radius:0; background:transparent; text-align:left; font-size:13px; }
+.groupItems button + button { border-top:1px solid var(--nq-line); }
+.groupItems span { min-width:0; overflow-wrap:anywhere; }
+.groupItems svg { flex:none; color:var(--nq-muted); }
+.groupName { flex:1; }
+.stageIcon { display:grid; place-items:center; flex:none; width:28px; height:28px; border-radius:9px; background:var(--marker-tint); }
+.groupItems .stageIcon svg { color:var(--marker-color); }
+.discovered { --marker-color:#64748b; --marker-tint:#f1f5f9; }
+.candidate { --marker-color:#c74375; --marker-tint:#fff0f5; }
+.visited { --marker-color:#136f63; --marker-tint:#eaf7f3; }
+.shortlist { --marker-color:#a66b08; --marker-tint:#fff6dd; }
+.passed { --marker-color:#8b929d; --marker-tint:#f3f4f6; }
+.caption { margin:4px 8px; font-size:.75rem; color:var(--nq-muted); }
+.wrap { min-height:0; overflow:hidden; }
+.map { min-height:80px; }
+.controls { position:absolute; z-index:4; right:10px; bottom:28px; display:grid; gap:4px; padding:0; }
+.controls button { display:grid; place-items:center; border:1px solid var(--nq-line); border-radius:10px; background:var(--nq-surface); box-shadow:var(--nq-shadow); width:40px; height:40px; min-height:40px; min-width:40px; padding:0; }
+.marker { width:30px; min-width:30px; min-height:30px; height:30px; color:var(--marker-color); background:#fff; border:1px solid #cdd3da; box-shadow:0 2px 5px #18212c26; }
+.marker.cluster { --marker-color:#64748b; width:auto; min-width:42px; padding:0 8px; border-radius:999px; }
+.marker.cluster svg { width:14px; height:14px; }
+.clusterStage { display:inline-flex; align-items:center; justify-content:center; gap:3px; color:var(--marker-color); white-space:nowrap; }
+.marker.cluster { gap:8px; }
+.marker.clusterGrid { display:grid; grid-template-columns:repeat(2,auto); gap:4px 8px; height:auto; padding:6px 8px; border-radius:12px; }
+.marker.selected { border-color:#fff; box-shadow:0 0 0 2px var(--nq-ink),0 3px 8px #18212c30; }
+.notice,.group { border-radius:16px; box-shadow:var(--nq-shadow); }
+.caption { display:none; }

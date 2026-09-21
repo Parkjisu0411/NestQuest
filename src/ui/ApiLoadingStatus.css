@@ -1,0 +1,5 @@
+.api-loading-status { display:flex; align-items:center; gap:8px; width:100%; max-width:100%; min-width:0; color:var(--nq-muted); font-size:12px; }
+.api-loading-status p { display:flex; align-items:center; gap:8px; flex:1 1 0; min-width:0; margin:0; }
+.api-loading-status__text { flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.api-loading-status__dot { flex:none; width:6px; height:6px; border-radius:50%; background:var(--nq-accent); }
+.api-loading-status button { flex:none; min-height:48px; padding:8px 12px; border:0; background:transparent; color:var(--nq-muted); font-size:12px; }

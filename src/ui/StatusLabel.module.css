@@ -1,0 +1,18 @@
+.label {
+  font-size: var(--nq-fs-meta);
+  font-weight: var(--nq-weight);
+}
+
+.plain,
+.passed {
+  color: var(--nq-muted);
+}
+
+.candidate {
+  color: var(--nq-accent);
+}
+
+.visited,
+.shortlist {
+  color: var(--nq-ink);
+}

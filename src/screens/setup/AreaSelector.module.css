@@ -1,0 +1,54 @@
+.wrap {
+  display: grid;
+  gap: 6px;
+}
+
+.map {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: color-mix(in srgb, var(--nq-surface) 80%, #eadccb);
+  border-radius: var(--nq-radius);
+}
+
+.region {
+  cursor: pointer;
+  fill: #eadfd2;
+  stroke: #fffdf9;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.region.metro {
+  fill: #dce8dc;
+}
+
+.region.selected {
+  fill: var(--nq-accent-soft);
+  stroke: var(--nq-accent);
+  stroke-width: 2.4;
+}
+
+.region.metro.selected {
+  fill: #cfe3d0;
+  stroke: #3f6f4a;
+}
+
+.region:focus-visible {
+  outline: 3px solid var(--nq-accent);
+  outline-offset: 2px;
+}
+
+.label {
+  fill: var(--nq-ink);
+  font-size: 11px;
+  font-weight: 650;
+  pointer-events: none;
+}
+
+.caption {
+  margin: 0;
+  color: var(--nq-muted);
+  font-size: 0.78rem;
+  text-align: center;
+}

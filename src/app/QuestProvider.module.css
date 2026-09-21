@@ -1,0 +1,19 @@
+.boot {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  color: var(--nq-muted);
+  font-size: var(--nq-fs-support);
+}
+
+.boot p {
+  margin: 0;
+}
+
+.banner {
+  max-width: var(--nq-page);
+  margin: 0 auto;
+  padding: 10px var(--nq-pad-x) 0;
+  color: var(--nq-danger);
+  font-size: var(--nq-fs-support);
+}

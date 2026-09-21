@@ -1,0 +1,112 @@
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { Link } from 'react-router'
+import { useQuestState } from '../app/useQuest.ts'
+import { useQuestPersist } from '../app/persistContext.ts'
+import { getApiSettings } from '../data/apiSettings.ts'
+import { fetchSeoulApartments } from '../data/providers/publicData.ts'
+import { attachDistrictTrades, fetchCommute, fetchDetail, fetchDistrictTrades } from '../data/providers/enrich.ts'
+import { geocode } from '../data/providers/kakao.ts'
+import { mapBundle } from '../data/map/bundle.ts'
+import { userMessageFromUnknown } from '../persistence/repository.ts'
+import { processDetailBatch } from '../data/providers/detailBatch.ts'
+import { ApiError, pauseProviderRequests } from '../data/providers/http.ts'
+import { hydrateCommute } from '../data/providers/hydrateCommute.ts'
+import { ApiLoadingStatus } from './ApiLoadingStatus.tsx'
+import { getCommuteServiceIssue, setCommuteServiceIssue } from '../data/commuteSession.ts'
+import { independentProviderStages } from '../data/providers/independentProviderStages.ts'
+import { runCatalogSync } from '../data/runCatalogSync.ts'
+
+export function LiveDataSync({ apartmentId, mapApartmentIds }: { apartmentId?: string; mapApartmentIds?: string[] }) {
+  const state = useQuestState()
+  const persist = useQuestPersist()
+  const [attempt, setAttempt] = useState(0)
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const [issues, setIssues] = useState<Record<string, string>>({})
+  const controller = useRef<AbortController | null>(null)
+  const queue = useRef(Promise.resolve())
+  // Scope depends on user choices, never on the result order changed by hydration.
+  const scopeKey = JSON.stringify([apartmentId, mapApartmentIds ? [...mapApartmentIds].sort() : null,
+    state.quest?.searchCriteria.areas.map(area => area.sigunguCode).sort(), state.quest?.searchCriteria.commuteDestination])
+  const work = useEffectEvent(async (abort: AbortController) => {
+    const signal = abort.signal
+    const keys = getApiSettings()
+    setIssues({})
+    setBusy(false); setFailed(false); setMessage('')
+    const progress = (text: string) => { if (!signal.aborted) { setBusy(true); setMessage(text) } }
+    const problems: Record<string, string> = {}
+    const stage = independentProviderStages(signal, (service, message) => {
+      problems[service] = message
+      if (!signal.aborted) setIssues({ ...problems })
+    })
+    try {
+      let records = state.catalogSnapshot?.records ?? []
+      if (!records.some(record => record.apartment.externalId)) {
+        records = await fetchSeoulApartments(keys.publicDataKey, signal, progress)
+        signal.throwIfAborted(); await persist.saveCatalog(records)
+      }
+      const areas = new Set(state.quest?.searchCriteria.areas.map(area => area.sigunguCode))
+      const ids = mapApartmentIds ? new Set(mapApartmentIds) : undefined
+      const targets = records.filter(record => record.apartment.externalId && (apartmentId ? record.apartment.id === apartmentId
+        : ids ? ids.has(record.apartment.id) : areas.has(record.area.sigunguCode)))
+      const destination = state.quest?.searchCriteria.commuteDestination
+      const station = mapBundle?.stations.find(item => `station:${item.id}` === destination?.id)
+      const validDestination = destination && station && destination.longitude === station.coordinate[0] && destination.latitude === station.coordinate[1]
+      let requested = false
+      const throttle = async () => { if (requested) await pauseProviderRequests(signal); requested = true }
+      await runCatalogSync(records,new Set(targets.map(record => record.apartment.id)),{
+        signal, destination, stage, progress, save:persist.saveCatalog,
+        detail: async (original,save) => {
+          await throttle()
+          let updated = original
+          let completed = false
+          await processDetailBatch([original], {
+            signal, refresh:false,
+            detail: record => fetchDetail(record,keys.publicDataKey,signal),
+            geocode: keys.kakaoRestKey.trim() ? address => geocode(address,keys.kakaoRestKey,signal) : undefined,
+            save: async values => { await save(values); updated = values[values.length-1] ?? updated },
+            report: (_id,result) => { completed = result.status !== 'error' },
+            progress: () => {},
+          })
+          return completed ? updated : undefined
+        },
+        prices: async values => {
+          const rows = await fetchDistrictTrades(values[0].area.sigunguCode,keys.publicDataKey,signal,progress)
+          signal.throwIfAborted()
+          return attachDistrictTrades(values,rows,new Date().toISOString())
+        },
+        commute: async (record,save) => {
+          if (!validDestination || !destination) throw new ApiError('공식 역 자료에서 출근역을 다시 선택해 주세요.','auth')
+          if (!keys.kakaoRestKey.trim()) throw new ApiError('통근 자동 조회에 필요한 Kakao 키를 등록해 주세요.','auth')
+          await throttle()
+          await hydrateCommute(record,destination,signal,() => fetchCommute(record,destination,keys.kakaoRestKey,signal),{save})
+        },
+      })
+      setFailed(Object.keys(problems).length > 0)
+      if (!signal.aborted) setMessage('자료 확인 완료')
+    } catch (error) {
+      if (controller.current === abort) {
+        setFailed(true)
+        setMessage(signal.aborted ? '조회를 중단했습니다. 완료된 자료는 유지됩니다. 조회 계속을 누르면 이어서 확인합니다.'
+          : userMessageFromUnknown(error, '실제 자료를 가져오지 못했습니다. 완료된 자료는 유지됩니다.'))
+      }
+    } finally { if (controller.current === abort) setBusy(false) }
+  })
+  useEffect(() => {
+    const abort = new AbortController()
+    controller.current = abort
+    queue.current = queue.current.then(async () => { if (!abort.signal.aborted) await work(abort) })
+    return () => { if (controller.current === abort) controller.current = null; abort.abort() }
+  }, [scopeKey, attempt])
+  return <section className="compact-sync" aria-label="실제 자료 조회">
+    {busy ? <ApiLoadingStatus message={message} onCancel={() => controller.current?.abort()} /> : null}
+    {!busy && failed ? <details><summary>일부 자료 미확인 · 재시도</summary>
+      {Object.entries(issues).map(([service, reason]) => <p key={service} role="alert">{service}: {reason}</p>)}
+      <p>{message}</p>
+      <button onClick={() => setAttempt(value => value + 1)}>조회 계속</button>
+      {getCommuteServiceIssue() ? <button onClick={() => { setCommuteServiceIssue(undefined); setAttempt(value => value + 1) }}>통근 재시도</button> : null}
+      <Link to="/connections">데이터 관리</Link>
+    </details> : null}
+  </section>
+}

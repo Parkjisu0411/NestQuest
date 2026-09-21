@@ -1,0 +1,33 @@
+.page {
+  max-width: 860px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--nq-pad-y) var(--nq-pad-x) var(--nq-pad-bottom);
+}
+.page h1 { font-size: var(--nq-fs-title); margin: 12px 0; }
+.page h2 { font-size: var(--nq-fs-lead); margin: 0; }
+.meta { color: var(--nq-muted); font-size: var(--nq-fs-support); }
+.metrics { display: grid; gap: 16px; margin-top: 24px; }
+.metric { min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--nq-line); border-radius: var(--nq-radius-sm); }
+.metric legend { font-weight: var(--nq-weight); }
+.choices { display: flex; gap: 8px; flex-wrap: wrap; }
+.choice { display: inline-flex; align-items: center; gap: 6px; min-height: var(--nq-touch); padding: 0 8px; border: 1px solid var(--nq-line); border-radius: var(--nq-radius-sm); cursor: pointer; }
+.choice:has(input:checked) { background: var(--nq-accent-soft); border-color: var(--nq-accent); }
+.notes, .note, .notes label { display: grid; gap: 8px; min-width: 0; }
+.notes { margin-top: 24px; gap: 12px; }
+.note { padding: 12px 0; border-bottom: 1px solid var(--nq-line); }
+.page textarea, .page select { width: 100%; min-height: var(--nq-touch); padding: 10px; border: 1px solid var(--nq-line); border-radius: var(--nq-radius-sm); color: var(--nq-ink); background: var(--nq-surface); }
+.page textarea { resize: vertical; }
+.page button { min-height: var(--nq-touch); padding: 8px 14px; border: 1px solid var(--nq-line); border-radius: var(--nq-radius-sm); color: var(--nq-ink); background: var(--nq-surface); }
+.note button { justify-self: end; }
+.actions { display: grid; gap: 12px; margin-top: 24px; }
+.actions p { margin: 0; }
+.actions a { display: flex; align-items: center; justify-content: center; min-height: var(--nq-touch); color: var(--nq-ink); }
+.page .primary { color: var(--nq-on-accent); background: var(--nq-accent); }
+.error { color: var(--nq-danger); }
+@media (min-width: 720px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.metric { border:1px solid var(--nq-line); border-radius:18px; padding:16px; background:var(--nq-surface); }
+.choice { position:relative; min-width:48px; justify-content:center; min-height:48px; border-radius:12px; }
+.choice:has(input:checked) { background:var(--nq-accent-soft); color:var(--nq-accent); border-color:var(--nq-accent); }
+.choice input { position:absolute; opacity:0; width:1px; height:1px; }
+.choice:focus-within { outline:2px solid var(--nq-accent); }

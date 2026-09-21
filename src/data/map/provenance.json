@@ -1,0 +1,202 @@
+{
+  "collectedAt": "2026-09-21",
+  "converter": "scripts/convert-map.mjs",
+  "railConverter": "scripts/extend-map-rail.mjs",
+  "crosswalk": [
+    {
+      "sgis": "11010",
+      "legal": "11110",
+      "name": "종로구"
+    },
+    {
+      "sgis": "11020",
+      "legal": "11140",
+      "name": "중구"
+    },
+    {
+      "sgis": "11030",
+      "legal": "11170",
+      "name": "용산구"
+    },
+    {
+      "sgis": "11040",
+      "legal": "11200",
+      "name": "성동구"
+    },
+    {
+      "sgis": "11050",
+      "legal": "11215",
+      "name": "광진구"
+    },
+    {
+      "sgis": "11060",
+      "legal": "11230",
+      "name": "동대문구"
+    },
+    {
+      "sgis": "11070",
+      "legal": "11260",
+      "name": "중랑구"
+    },
+    {
+      "sgis": "11080",
+      "legal": "11290",
+      "name": "성북구"
+    },
+    {
+      "sgis": "11090",
+      "legal": "11305",
+      "name": "강북구"
+    },
+    {
+      "sgis": "11100",
+      "legal": "11320",
+      "name": "도봉구"
+    },
+    {
+      "sgis": "11110",
+      "legal": "11350",
+      "name": "노원구"
+    },
+    {
+      "sgis": "11120",
+      "legal": "11380",
+      "name": "은평구"
+    },
+    {
+      "sgis": "11130",
+      "legal": "11410",
+      "name": "서대문구"
+    },
+    {
+      "sgis": "11140",
+      "legal": "11440",
+      "name": "마포구"
+    },
+    {
+      "sgis": "11150",
+      "legal": "11470",
+      "name": "양천구"
+    },
+    {
+      "sgis": "11160",
+      "legal": "11500",
+      "name": "강서구"
+    },
+    {
+      "sgis": "11170",
+      "legal": "11530",
+      "name": "구로구"
+    },
+    {
+      "sgis": "11180",
+      "legal": "11545",
+      "name": "금천구"
+    },
+    {
+      "sgis": "11190",
+      "legal": "11560",
+      "name": "영등포구"
+    },
+    {
+      "sgis": "11200",
+      "legal": "11590",
+      "name": "동작구"
+    },
+    {
+      "sgis": "11210",
+      "legal": "11620",
+      "name": "관악구"
+    },
+    {
+      "sgis": "11220",
+      "legal": "11650",
+      "name": "서초구"
+    },
+    {
+      "sgis": "11230",
+      "legal": "11680",
+      "name": "강남구"
+    },
+    {
+      "sgis": "11240",
+      "legal": "11710",
+      "name": "송파구"
+    },
+    {
+      "sgis": "11250",
+      "legal": "11740",
+      "name": "강동구"
+    }
+  ],
+  "sources": [
+    {
+      "file": "bnd_sigungu_00_2025_2Q.shp",
+      "sha256": "85523b10411652aa6b5c286a82eff7e77c7e563d5f644eb62a221a121f7e3968"
+    },
+    {
+      "file": "bnd_sigungu_00_2025_2Q.dbf",
+      "sha256": "18f7d3a5f0fd8cf12e4a5deca3faf52133db4f7221dfbeccedf94ec06b58ece6"
+    },
+    {
+      "file": "bnd_sigungu_00_2025_2Q.prj",
+      "sha256": "e21b26451491c617318aab7d28abf4d07f5facc2aed1564e082ec8d4268cfa3b"
+    },
+    {
+      "file": "stations.json",
+      "sha256": "96324048e8d6926c821043205af8348f14f499abb625e62b973b32294bbf7487"
+    },
+    {
+      "file": "metro-distance.csv",
+      "sha256": "45e83a8cad99f70445e386d1f817a3159be679b8f4cba6f83faa5fbc63b47ded"
+    },
+    {
+      "file": "rail/15041298.csv",
+      "sha256": "64faed606c011f08f675e0c8b6b07993f74a2a89df110898a2622c3f8e25538d"
+    },
+    {
+      "file": "rail/15041310.csv",
+      "sha256": "96bc2ead59f798a9ec9df0494c6ebd0b3847b7b622e2d5fb2d4b37bc6a6c649a"
+    },
+    {
+      "file": "rail/15041074.csv",
+      "sha256": "2a2b4a161fbb7ff85097417404012abbffd6773fc9f0741c81d6838b6a601048"
+    },
+    {
+      "file": "rail/15081853.csv",
+      "sha256": "491f4a6a9bccac82c760c55d5fa0239d0b4213f2368441fa03d1a65f219e954b"
+    },
+    {
+      "file": "rail/15081858.csv",
+      "sha256": "c94065b00fabbdab42405ccdac7cc4062b0312c014d01fe3d93e643226534e13"
+    },
+    {
+      "file": "rail/15041284.csv",
+      "sha256": "a2a6024a8c77ec564331ed05c689f7096aab2b25d6013cf500e85b378d92eed0"
+    },
+    {
+      "file": "rail/15041295.csv",
+      "sha256": "e0c9fd034f9d563f930e836f6f623bacd11fcaec4d0a64e5f12796dbae601d91"
+    },
+    {
+      "file": "rail/15041327.csv",
+      "sha256": "5113b9a6db269042467f969f946287510d3ffc5f3d60d328018390cf10475a8f"
+    },
+    {
+      "file": "rail/15041423.csv",
+      "sha256": "da7ad50e282d5f916778b7473527be47980c680fe05a6f8bcd8a08cb0c1f43ed"
+    },
+    {
+      "file": "rail/15041350.csv",
+      "sha256": "e03dbf3827a1ff99f1aa2ffa907562ad6fc9b6908450c6c401f697fb86bf3ef9"
+    },
+    {
+      "file": "rail/15041340.csv",
+      "sha256": "46d912527bbbf7c2ec7c155047962cf868b25657de0a7ab0135ead1823375928"
+    },
+    {
+      "file": "rail/15041299.csv",
+      "sha256": "638ad79cb547ff29a556f56da856d03420bd060443a69780e1db9ccf3e9cd964"
+    }
+  ]
+}

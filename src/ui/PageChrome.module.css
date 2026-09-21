@@ -1,0 +1,28 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--nq-touch);
+  gap: var(--nq-space-3);
+}
+
+.back,
+.brand {
+  margin: 0;
+  font-size: var(--nq-fs-support);
+  font-weight: var(--nq-weight);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--nq-touch);
+  color: var(--nq-muted);
+  text-decoration: none;
+}
+
+.brand {
+  color: var(--nq-accent);
+}
+.topbar { min-height:48px; margin-bottom:8px; }
+.back { justify-content:center; min-width:48px; margin-left:-12px; border-radius:14px; color:var(--nq-ink); }
