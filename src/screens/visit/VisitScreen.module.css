@@ -307,3 +307,23 @@
 .primary,.secondary,.choice,.photoAdd { min-height:48px; border-radius:14px; }
 .block { background:var(--nq-surface); padding:16px; border:1px solid var(--nq-line); border-radius:20px; }
 .support { font-size:12px; line-height:1.5; }
+
+@media (min-width: 720px) {
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .actions > button,
+  .complete {
+    width: auto;
+    min-width: 144px;
+    min-height: 48px;
+    padding: 12px 24px;
+  }
+
+  .actions > .primary { order: 1; }
+  .complete { justify-self: end; }
+}

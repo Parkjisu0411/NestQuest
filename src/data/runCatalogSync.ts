@@ -5,7 +5,7 @@ import { detailKey, markDistrictPrices, needsCommute, needsDetail, needsDistrict
 type Record = DiscoverableApartment
 type Save = (records: Record[]) => Promise<void>
 export async function runCatalogSync(records: Record[], targetIds: Set<string>, options: {
-  signal: AbortSignal; destination?: CommuteDestination;
+  signal: AbortSignal; destination?: CommuteDestination; priceDistricts?: ReadonlySet<string>;
   detail: (record: Record, save: Save) => Promise<Record | undefined>;
   prices: (records: Record[]) => Promise<Record[]>;
   commute: (record: Record, save: Save) => Promise<void>;
@@ -36,7 +36,7 @@ export async function runCatalogSync(records: Record[], targetIds: Set<string>, 
       })
     }
     const districtRecords = [...current.values()].filter(r => r.area.sigunguCode === district)
-    if (needsDistrictPrices(districtRecords)) {
+    if ((!options.priceDistricts || options.priceDistricts.has(district)) && needsDistrictPrices(districtRecords)) {
       await stage('실거래',async () => {
         progress(`${districtRecords[0].area.sigunguName} · 실거래 갱신`)
         const enriched = await options.prices(districtRecords)

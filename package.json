@@ -7,7 +7,7 @@
     "dev": "vite",
     "start": "node scripts/serve-local.mjs",
     "local": "npm run build && npm start",
-    "build": "tsc -b && vite build && node scripts/build-offline.mjs",
+    "build": "npm run seed:prepare && tsc -b && vite build && node scripts/build-offline.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -21,7 +21,8 @@
     "keys:check": "node --experimental-strip-types scripts/local-keys.mjs check",
     "api:verify": "node --experimental-strip-types scripts/verify-api.mjs",
     "map:convert": "node --experimental-strip-types scripts/convert-map.mjs",
-    "map:rail:fetch": "node scripts/fetch-rail.mjs"
+    "map:rail:fetch": "node scripts/fetch-rail.mjs",
+    "seed:prepare": "node --experimental-strip-types scripts/prepare-bootstrap.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

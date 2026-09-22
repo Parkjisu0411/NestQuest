@@ -175,11 +175,11 @@ export function QuestHomeScreen() {
     <main className={styles.page}>
       <header className={styles.header}>
         <div className={styles.top}>
-          <div><p className={styles.brand}>NESTQUEST</p><h1 className={styles.title}>내 집 찾기</h1></div>
-          <Link to="/filters" className={styles.filterButton}><Icon name="filter" />필터</Link>
-        </div>
-        <div className={styles.conditionRow}>
-          <p className={styles.context}>{context}</p>
+          <div className={styles.titleGroup}>
+            <h1 className={styles.title}>내 집 찾기</h1>
+            <p className={styles.context} title={context}>{context}</p>
+          </div>
+          <Link to="/filters" className={styles.filterButton}><Icon name="filter" size={18} />필터</Link>
           <details className={styles.options}>
             <summary aria-label="목록 옵션"><Icon name="more" /></summary>
             <div className={styles.optionsPanel}>
@@ -193,7 +193,7 @@ export function QuestHomeScreen() {
             </div>
           </details>
         </div>
-        <LiveDataSync apartmentId={selectedId ?? undefined} />
+        <LiveDataSync apartmentId={selectedId ?? undefined} mapApartmentIds={pageItems.map(item=>item.match.apartment.id)} />
       </header>
 
       <StageFilter value={stageFilter} counts={counts} onChange={(value) => {
@@ -220,10 +220,24 @@ export function QuestHomeScreen() {
       </section>
 
       <section className={styles.listPanel} aria-label="단지 목록">
-        <button type="button" className={styles.listToggle} aria-expanded={listOpen} aria-controls="apartment-list" onClick={() => setBrowse((current) => ({ ...current, listOpen: !current.listOpen }))}>
-          {listOpen ? '목록 접기' : '목록 열기'} · {visibleItems.length}개
+        <div className={styles.listHeader}>
+        <button type="button" className={styles.listToggle} aria-label={listOpen ? '단지 목록 접기' : '단지 목록 열기'} aria-expanded={listOpen} aria-controls="apartment-list" onClick={() => setBrowse((current) => ({ ...current, listOpen: !current.listOpen }))}>
+          목록 {visibleItems.length}개 {listOpen ? '⌄' : '⌃'}
         </button>
-        <h2 className={styles.listHeading}>단지 목록 · {visibleItems.length}개</h2>
+        <h2 className={styles.listHeading}>단지 {visibleItems.length}개</h2>
+      <div className={styles.sortBar}>
+        {stageFilter === 'shortlist' ? <span>내 순서</span> : <>
+          <select aria-label="단지 정렬" value={browse.sort} onChange={event => {
+            resetList()
+            setBrowse(current => ({...current,sort:event.target.value as BrowseSort}))
+          }}>
+            <option value="default">{stageFilter === 'candidate' ? '최근 관심순' : stageFilter === 'visited' ? '최근 방문순' : '통근순'}</option>
+            {stageFilter !== 'all' ? <option value="commute">통근순</option> : null}<option value="price">가격 낮은 순</option><option value="name">이름순</option>
+          </select>
+          <button type="button" aria-label="최신 데이터로 다시 정렬" title="최신 데이터로 다시 정렬" onClick={() => { resetList(); setSortRevision(value => value+1) }}><Icon name="reset" size={16} /></button>
+        </>}
+      </div>
+        </div>
         <div className={styles.listContent} id="apartment-list" ref={listRef} onScroll={(event) => { if (event.currentTarget.clientHeight > 0) scrollTopRef.current = event.currentTarget.scrollTop }}>
 
       {stageFilter === 'shortlist' ? (
@@ -251,18 +265,6 @@ export function QuestHomeScreen() {
         </button>
       ) : null}
 
-      <div className={styles.sortBar}>
-        {stageFilter === 'shortlist' ? <span>내 순서</span> : <>
-          <select aria-label="단지 정렬" value={browse.sort} onChange={event => {
-            resetList()
-            setBrowse(current => ({...current,sort:event.target.value as BrowseSort}))
-          }}>
-            <option value="default">{stageFilter === 'candidate' ? '최근 관심순' : stageFilter === 'visited' ? '최근 방문순' : '통근순 (기본)'}</option>
-            <option value="commute">통근순</option><option value="price">가격 낮은 순</option><option value="name">이름순</option>
-          </select>
-          <button type="button" aria-label="최신 데이터로 다시 정렬" title="최신 데이터로 다시 정렬" onClick={() => { resetList(); setSortRevision(value => value+1) }}><Icon name="reset" size={16} /></button>
-        </>}
-      </div>
       <section className={styles.list} aria-label="탐색 결과와 보관 단지">
         {visibleItems.length === 0 ? (
           <div className={styles.empty}>

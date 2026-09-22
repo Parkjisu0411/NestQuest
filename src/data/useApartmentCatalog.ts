@@ -3,7 +3,7 @@ import { useQuestState } from '../app/useQuest.ts'
 import { catalogForState } from './apartments.ts'
 import { createApartmentCatalog } from './apartmentCatalog.ts'
 import { commuteQueryKey, useCommuteQueries } from './commuteSession.ts'
-import { savedCommute, commuteIsFresh } from './commuteCache.ts'
+import { savedCommute, storedCommute, commuteIsFresh } from './commuteCache.ts'
 import { isGeneralApartment } from './housingType.ts'
 
 export function useApartmentCatalog() {
@@ -14,7 +14,7 @@ export function useApartmentCatalog() {
     const destination = state.quest?.searchCriteria.commuteDestination
     const enriched = !destination ? catalog : createApartmentCatalog(catalog.list().map((record) => {
       const result = queries.get(commuteQueryKey(record.apartment, destination))
-      const estimate = savedCommute(record, destination) ?? (result?.status === 'success' && result.estimate && commuteIsFresh(result.estimate) ? result.estimate : undefined)
+      const estimate = savedCommute(record, destination) ?? (result?.status === 'success' && result.estimate && commuteIsFresh(result.estimate) ? result.estimate : undefined) ?? storedCommute(record,destination)
       return { ...record, commutes: estimate ? [estimate] : [] }
     }), catalog.mode)
     // Hide non-general/unknown types from browsing while keeping existing records

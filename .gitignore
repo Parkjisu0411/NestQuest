@@ -37,3 +37,7 @@ android/app/src/main/assets/public/
 
 __pycache__/
 *.pyc
+
+# Personal bootstrap data (generated from local catalog)
+local-data/
+public/bootstrap.json

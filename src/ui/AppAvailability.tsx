@@ -43,7 +43,7 @@ export function AppAvailability() {
   }, [])
   return <aside className="app-availability" aria-label="앱 사용 상태">
     {!online ? <p role="status">오프라인 · 이 기기에 저장된 기록을 열고 작성할 수 있습니다.</p> : null}
-    {isAndroidApp() ? <span>기기에 설치된 앱 · 기록은 이 기기에 저장됩니다</span> : offlineReady ? <span>오프라인 실행 준비됨</span> : null}
+    {!isAndroidApp() && offlineReady ? <span>오프라인 실행 준비됨</span> : null}
     {updateReady ? <p role="status">새 버전이 준비됐습니다. 작성 내용을 저장한 후 NestQuest 창을 모두 닫고 다시 열면 적용됩니다.</p> : null}
     {message ? <p role="status">{message}</p> : null}
     {install ? <button onClick={async () => {

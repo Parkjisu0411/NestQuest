@@ -16,7 +16,7 @@
 
 2026-09-18 마지막 환경 진단: Java 17, Android SDK 및 기본 경로의 Android Studio 없음. **아직 APK 파일을 생성하지 않았으며 Java 플러그인 컴파일도 검증하지 못했다.**
 
-1. [Capacitor 환경 안내](https://capacitorjs.com/docs/getting-started/environment-setup)에 따라 Android Studio 2025.2.1 이상 및 JDK 21 이상을 준비한다. Studio의 포함 JDK를 사용할 수 있다.
+1. [Capacitor 환경 안내](https://capacitorjs.com/docs/getting-started/environment-setup)에 따라 Android Studio 2025.2.1 이상 및 JDK 21을 준비한다. 최신 Studio의 내장 JDK가 25인 경우 별도로 JDK 21을 설치한다. 파일 저장 플러그인은 Java 21 toolchain을 요구한다. CLI의 JAVA_HOME과 Studio의 Gradle JDK를 JDK 21로 맞춘다.
 2. SDK Manager에서 Android SDK Platform 36, Android SDK Build-Tools, Platform-Tools를 설치한다. SDK 약관은 설치 화면에서 직접 확인한다.
 3. `JAVA_HOME`을 JDK에, `ANDROID_HOME`을 SDK에 설정한다. 또는 Android Studio가 만든 `android/local.properties`의 `sdk.dir`을 사용한다. 시스템의 다른 Java 프로젝트 설정은 필요하면 그대로 두고 터미널 세션에만 환경변수를 적용한다.
 

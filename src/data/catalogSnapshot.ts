@@ -34,12 +34,13 @@ const recordSchema = z.object({
 })
 
 export interface CatalogSnapshot {
+  bootstrapVersion?: string
   mode: 'live'
   records: DiscoverableApartment[]
 }
 
 export function parseCatalogSnapshot(raw: unknown): CatalogSnapshot {
-  const result = z.object({ mode: z.literal('live'), records: z.array(recordSchema).max(100_000) }).safeParse(raw)
+  const result = z.object({ bootstrapVersion: z.string().max(200).optional(), mode: z.literal('live'), records: z.array(recordSchema).max(100_000) }).safeParse(raw)
   if (!result.success) throw new PersistError('단지 자료 형식이 올바르지 않습니다. 기존 자료를 유지합니다.')
   const ids = new Set<string>()
   for (const record of result.data.records) {
@@ -76,5 +77,5 @@ export function mergeCatalog(previous: CatalogSnapshot | undefined, incoming: Di
       : record
     records.set(record.apartment.id, { ...merged, commutes: [...commutes.values()] })
   }
-  return { mode: 'live', records: [...records.values()] }
+  return { mode: 'live', records: [...records.values()], ...(previous?.bootstrapVersion ? {bootstrapVersion:previous.bootstrapVersion} : {}) }
 }

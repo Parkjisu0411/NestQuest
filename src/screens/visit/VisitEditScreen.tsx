@@ -99,8 +99,10 @@ function Editor({ original }: { original: Visit }) {
           <span>사진 {index + 1}</span>
           <button type="button" aria-label={`사진 ${index + 1} 삭제`} onClick={() => { setDirty(true); setValue({ ...value, photos: value.photos.filter((item) => item.id !== photo.id), observations: unlinkObservationPhoto(value.observations ?? {}, photo.id) }) }}>삭제</button>
         </li>)}</ul>
+        <div className={styles.actions}>
         <button type="submit" className={styles.primary}>{saving ? '저장 중…' : '수정 저장'}</button>
         <button type="button" className={styles.secondary} onClick={() => navigate(backTo, { replace: true })}>변경 취소</button>
+        </div>
       </fieldset>
     </form>
   </main>

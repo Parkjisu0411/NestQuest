@@ -7,7 +7,7 @@ async function filesIn(directory) {
   const entries = await readdir(directory, { withFileTypes: true })
   return (await Promise.all(entries.map((entry) => entry.isDirectory() ? filesIn(path.join(directory, entry.name)) : path.join(directory, entry.name)))).flat()
 }
-const files = (await filesIn(root)).filter((file) => /\.(html|js|css|png|svg|webmanifest)$/.test(file) && !file.endsWith(`${path.sep}sw.js`)).sort()
+const files = (await filesIn(root)).filter((file) => /\.(html|js|css|png|svg|webmanifest|json)$/.test(file) && !file.endsWith(`${path.sep}sw.js`)).sort()
 const digest = createHash('sha256')
 for (const file of files) digest.update(await readFile(file))
 const version = digest.digest('hex').slice(0, 16)

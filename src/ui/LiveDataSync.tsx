@@ -14,9 +14,10 @@ import { hydrateCommute } from '../data/providers/hydrateCommute.ts'
 import { ApiLoadingStatus } from './ApiLoadingStatus.tsx'
 import { getCommuteServiceIssue, setCommuteServiceIssue } from '../data/commuteSession.ts'
 import { independentProviderStages } from '../data/providers/independentProviderStages.ts'
+import { autoSyncTargets } from '../data/autoSyncTargets.ts'
 import { runCatalogSync } from '../data/runCatalogSync.ts'
 
-export function LiveDataSync({ apartmentId, mapApartmentIds }: { apartmentId?: string; mapApartmentIds?: string[] }) {
+export function LiveDataSync({ apartmentId, mapApartmentIds, full = false }: { apartmentId?: string; mapApartmentIds?: string[]; full?: boolean }) {
   const state = useQuestState()
   const persist = useQuestPersist()
   const [attempt, setAttempt] = useState(0)
@@ -27,7 +28,7 @@ export function LiveDataSync({ apartmentId, mapApartmentIds }: { apartmentId?: s
   const controller = useRef<AbortController | null>(null)
   const queue = useRef(Promise.resolve())
   // Scope depends on user choices, never on the result order changed by hydration.
-  const scopeKey = JSON.stringify([apartmentId, mapApartmentIds ? [...mapApartmentIds].sort() : null,
+  const scopeKey = JSON.stringify([full, Object.entries(state.apartmentQuestStates).filter(([,s])=>['SHORTLIST','CANDIDATE','VISITED'].includes(s.stage)).map(([id,s])=>[id,s.stage]), apartmentId, mapApartmentIds ? [...mapApartmentIds].sort() : null,
     state.quest?.searchCriteria.areas.map(area => area.sigunguCode).sort(), state.quest?.searchCriteria.commuteDestination])
   const work = useEffectEvent(async (abort: AbortController) => {
     const signal = abort.signal
@@ -47,16 +48,15 @@ export function LiveDataSync({ apartmentId, mapApartmentIds }: { apartmentId?: s
         signal.throwIfAborted(); await persist.saveCatalog(records)
       }
       const areas = new Set(state.quest?.searchCriteria.areas.map(area => area.sigunguCode))
-      const ids = mapApartmentIds ? new Set(mapApartmentIds) : undefined
-      const targets = records.filter(record => record.apartment.externalId && (apartmentId ? record.apartment.id === apartmentId
-        : ids ? ids.has(record.apartment.id) : areas.has(record.area.sigunguCode)))
+      const targets = autoSyncTargets(records,state.apartmentQuestStates,areas,mapApartmentIds,apartmentId,full)
       const destination = state.quest?.searchCriteria.commuteDestination
       const station = mapBundle?.stations.find(item => `station:${item.id}` === destination?.id)
       const validDestination = destination && station && destination.longitude === station.coordinate[0] && destination.latitude === station.coordinate[1]
       let requested = false
       const throttle = async () => { if (requested) await pauseProviderRequests(signal); requested = true }
-      await runCatalogSync(records,new Set(targets.map(record => record.apartment.id)),{
+      const syncOptions: Parameters<typeof runCatalogSync>[2] = {
         signal, destination, stage, progress, save:persist.saveCatalog,
+        priceDistricts: full ? undefined : new Set([...new Set(targets.map(r=>r.area.sigunguCode))].slice(0,3)),
         detail: async (original,save) => {
           await throttle()
           let updated = original
@@ -82,7 +82,20 @@ export function LiveDataSync({ apartmentId, mapApartmentIds }: { apartmentId?: s
           await throttle()
           await hydrateCommute(record,destination,signal,() => fetchCommute(record,destination,keys.kakaoRestKey,signal),{save})
         },
-      })
+      }
+      const currentRecords = new Map(records.map(r=>[r.apartment.id,r]))
+      const save = syncOptions.save
+      syncOptions.save = async values => { await save(values); for (const r of values) currentRecords.set(r.apartment.id,r) }
+      // Process the selected apartment end-to-end before background candidates.
+      if (apartmentId) await runCatalogSync([...currentRecords.values()],new Set([apartmentId]),syncOptions)
+      const remaining = targets.filter(r=>r.apartment.id !== apartmentId)
+      const groups = full ? [remaining] : [
+        remaining.filter(r=>state.apartmentQuestStates[r.apartment.id]?.stage === 'SHORTLIST'),
+        remaining.filter(r=>state.apartmentQuestStates[r.apartment.id]?.stage === 'CANDIDATE'),
+        remaining.filter(r=>state.apartmentQuestStates[r.apartment.id]?.stage === 'VISITED'),
+        remaining.filter(r=>!['SHORTLIST','CANDIDATE','VISITED'].includes(state.apartmentQuestStates[r.apartment.id]?.stage)),
+      ]
+      for (const group of groups) if (group.length) await runCatalogSync([...currentRecords.values()],new Set(group.map(r=>r.apartment.id)),syncOptions)
       setFailed(Object.keys(problems).length > 0)
       if (!signal.aborted) setMessage('자료 확인 완료')
     } catch (error) {
@@ -101,6 +114,7 @@ export function LiveDataSync({ apartmentId, mapApartmentIds }: { apartmentId?: s
   }, [scopeKey, attempt])
   return <section className="compact-sync" aria-label="실제 자료 조회">
     {busy ? <ApiLoadingStatus message={message} onCancel={() => controller.current?.abort()} /> : null}
+    {full && !busy && !failed && message ? <p role="status">{message}</p> : null}
     {!busy && failed ? <details><summary>일부 자료 미확인 · 재시도</summary>
       {Object.entries(issues).map(([service, reason]) => <p key={service} role="alert">{service}: {reason}</p>)}
       <p>{message}</p>

@@ -27,6 +27,7 @@ import {
 } from './questStore.ts'
 import styles from './QuestProvider.module.css'
 import { RestoreScreen } from '../screens/setup/RestoreScreen.tsx'
+import { loadBundledBootstrap, mergeBootstrap } from '../data/bootstrap.ts'
 import { mergeCatalog } from '../data/catalogSnapshot.ts'
 import type { DiscoverableApartment } from '../domain/discover.ts'
 
@@ -46,14 +47,13 @@ export function QuestProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
-    loadPersistedAppState()
-      .then((loaded) => {
+    Promise.all([loadPersistedAppState(), loadBundledBootstrap()])
+      .then(([loaded, seed]) => {
         if (cancelled) {
           return
         }
-        if (loaded !== null) {
-          dispatch({ type: 'replaceState', state: loaded })
-        }
+        const restored = loaded ?? initialQuestState
+        dispatch({ type:'replaceState',state:seed ? {...restored,catalogSnapshot:mergeBootstrap(restored.catalogSnapshot,seed)} : restored })
         persistPaused.current = false
         setReady(true)
       })

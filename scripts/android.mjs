@@ -15,7 +15,7 @@ if (!sdk && existsSync(localProperties)) {
 }
 if (!sdk && process.env.LOCALAPPDATA) sdk = join(process.env.LOCALAPPDATA, 'Android', 'Sdk')
 const problems = []
-if (!major || major < 21) problems.push(`JDK 21 이상 필요 (현재 ${major || '찾지 못함'}). JAVA_HOME을 설정하세요.`)
+if (major !== 21) problems.push(`이 프로젝트의 CLI 빌드는 JDK 21을 사용합니다 (현재 ${major || '찾지 못함'}). JDK 21을 설치하고 JAVA_HOME을 해당 경로로 설정하세요. 최신 Studio의 내장 JDK는 25일 수 있습니다.`)
 if (!sdk || !existsSync(join(sdk, 'platforms', 'android-36', 'android.jar'))) problems.push('Android SDK Platform 36 필요. ANDROID_HOME 또는 android/local.properties를 설정하세요.')
 if (!sdk || !existsSync(join(sdk, 'build-tools'))) problems.push('Android SDK Build-Tools가 필요합니다.')
 if (problems.length) {

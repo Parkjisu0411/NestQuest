@@ -15,7 +15,6 @@ import {
 import { StationPicker } from '../../ui/StationPicker.tsx'
 import {
   SEOUL_SIDO_CODE,
-  groupedSetupRegions,
   mergeQuestAreas,
   questAreasForSido,
 } from '../../mock/areas.ts'
@@ -158,7 +157,6 @@ export function SetupScreen() {
     () => new Set(areas.map((area) => area.sigunguCode)),
     [areas],
   )
-  const areaGroups = useMemo(() => groupedSetupRegions().filter(group => group.sidoCode === SEOUL_SIDO_CODE), [])
 
   const cashEokValue = parseEnteredNumber(cashEok)
   const loanEokValue = parseEnteredNumber(loanEok)
@@ -403,39 +401,11 @@ export function SetupScreen() {
             </button>
           </div>
           
-          {areaGroups.map((group) => (
-            <div key={group.sidoCode} className={styles.areaGroup}>
-              <p className={styles.areaGroupLabel}>{group.sidoName}{group.sidoCode !== SEOUL_SIDO_CODE ? ' · 예시 자료' : ''}</p>
-              <div className={styles.areaChips}>
-                {group.regions.map((region) => {
-                  const selected = selectedCodes.has(region.sigunguCode)
-                  return (
-                    <button
-                      key={region.sigunguCode}
-                      type="button"
-                      className={selected ? `${styles.chip} ${styles.chipOn}` : styles.chip}
-                      aria-pressed={selected}
-                      onClick={() =>
-                        toggleArea({
-                          sidoCode: region.sidoCode,
-                          sidoName: region.sidoName,
-                          sigunguCode: region.sigunguCode,
-                          sigunguName: region.sigunguName,
-                        })
-                      }
-                    >
-                      {region.sigunguName}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
           <AreaSelector selectedCodes={selectedCodes} onToggle={toggleArea} />
           <p className={styles.selectedAreas} aria-live="polite">
             {areas.length === 0
-              ? '아직 고른 지역이 없습니다.'
-              : areas.map((area) => area.sigunguName).join(' · ')}
+              ? '지도에서 지역을 선택하세요'
+              : allSeoulSelected ? '서울 전체 선택' : `${areas.length}개 구 선택`}
           </p>
         </section>
       ) : null}

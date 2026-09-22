@@ -54,3 +54,6 @@
 .tab { align-items:center; justify-content:center; gap:5px; min-height:48px; padding:0 12px; border-radius:14px; font-size:13px; }
 .tab.selected { background:var(--nq-accent); box-shadow:none; color:var(--nq-on-accent); }
 .tab.selected .count { opacity:1; }
+
+.row { padding: 0; gap: 2px; }
+.tab { min-height: 44px; padding: 0 10px; border-radius: 10px; font-size: 12px; }

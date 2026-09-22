@@ -79,7 +79,8 @@ export function ApartmentCard({
         {shortlistMemo ? <span className={styles.memo}>{shortlistMemo}</span> : null}
         {match.unknownFields.length ? <span className={styles.memo}>{match.unknownFields.join('·')} 미확인</span> : null}
         
-        {selected && commute?.provider === 'Kakao' ? <span className={styles.memo}>카카오 통근 · {commute.calculatedAt.slice(0,10)} 조회</span> : null}
+        {displayUnit?.priceEstimate ? <span className={styles.memo}>가격 · {displayUnit.priceEstimate.calculatedAt.slice(0,10)} 기준</span> : null}
+        {commute?.provider === 'Kakao' ? <span className={styles.memo}>카카오 통근 · {commute.calculatedAt.slice(0,10)} 조회</span> : null}
       </button>
       <Link to={`/apartments/${apartment.id}`} className={styles.detail} aria-label={`${apartment.name} 상세`}>상세<Icon name="chevron" size={16} /></Link>
       {stage === 'DISCOVERED' ? (

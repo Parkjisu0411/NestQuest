@@ -1,3 +1,6 @@
+import { LiveDataSync } from '../../ui/LiveDataSync.tsx'
+import { createBootstrap, bootstrapSummary } from '../../data/bootstrap.ts'
+import { downloadJsonFile } from '../../persistence/download.ts'
 import { ApiKeyStatus } from '../../ui/ApiKeyStatus.tsx'
 import { ApiLoadingStatus } from '../../ui/ApiLoadingStatus.tsx'
 import { nextDetailBatch, processDetailBatch, type DetailAttempt } from '../../data/providers/detailBatch.ts'
@@ -26,6 +29,7 @@ import { isGeneralApartment } from '../../data/housingType.ts'
 import { markDistrictPrices } from '../../data/syncPlan.ts'
 
 export function ConnectionsScreen() {
+  const [preparing, setPreparing] = useState(false)
   const keys = getApiSettings()
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
@@ -59,7 +63,19 @@ export function ConnectionsScreen() {
     <h1>데이터 관리</h1>
     
     {busy ? <ApiLoadingStatus message={message} onCancel={() => controller.current?.abort()} /> : null}
-    <fieldset style={{ border: 0, padding: 0, minWidth: 0 }}>
+    <details className={connections.group}><summary>APK 초기 자료</summary>
+      <p>저장된 자료 {live.length.toLocaleString()}개 · 개인 기록 제외</p>
+      <p>선택한 지역 전체를 준비합니다. 화면을 유지하고, 완료 후 내보내세요. API 한도에 도달하면 저장한 부분부터 나중에 이어서 준비할 수 있습니다.</p>
+      <button disabled={busy} onClick={() => setPreparing(value=>!value)}>{preparing ? '전체 준비 종료' : '전체 자료 준비'}</button>
+      {preparing ? <LiveDataSync full /> : null}
+      <button disabled={busy || preparing || !live.length} onClick={() => void run(async () => {
+        const seed = createBootstrap(live)
+        const summary = bootstrapSummary(seed)
+        await downloadJsonFile('nestquest-bootstrap.json',JSON.stringify(seed))
+        setMessage(`내보내기 완료 · 전체 ${summary.total} · 위치 ${summary.located} · 가격 ${summary.priced} · 통근 ${summary.commutes}`)
+      })}>APK 초기 자료 내보내기</button>
+    </details>
+    <fieldset disabled={preparing} style={{ border: 0, padding: 0, minWidth: 0 }}>
       <details className={connections.group}><summary>API 키</summary><ApiKeyStatus settings={keys} /></details>
       <details className={connections.group}><summary>서울 단지 목록</summary>
       <p>{live.length.toLocaleString()}개 저장됨</p>

@@ -1,54 +1,11 @@
-.wrap {
-  display: grid;
-  gap: 6px;
-}
-
-.map {
-  width: 100%;
-  height: auto;
-  display: block;
-  background: color-mix(in srgb, var(--nq-surface) 80%, #eadccb);
-  border-radius: var(--nq-radius);
-}
-
-.region {
-  cursor: pointer;
-  fill: #eadfd2;
-  stroke: #fffdf9;
-  stroke-width: 1.6;
-  stroke-linejoin: round;
-}
-
-.region.metro {
-  fill: #dce8dc;
-}
-
-.region.selected {
-  fill: var(--nq-accent-soft);
-  stroke: var(--nq-accent);
-  stroke-width: 2.4;
-}
-
-.region.metro.selected {
-  fill: #cfe3d0;
-  stroke: #3f6f4a;
-}
-
-.region:focus-visible {
-  outline: 3px solid var(--nq-accent);
-  outline-offset: 2px;
-}
-
-.label {
-  fill: var(--nq-ink);
-  font-size: 11px;
-  font-weight: 650;
-  pointer-events: none;
-}
-
-.caption {
-  margin: 0;
-  color: var(--nq-muted);
-  font-size: 0.78rem;
-  text-align: center;
-}
+.wrap { min-width:0; }
+.map { width:100%; height:auto; display:block; background:var(--nq-surface); border-radius:var(--nq-radius); }
+.region { cursor:pointer; fill:#e7ebef; stroke:#fff; stroke-width:1.3; stroke-linejoin:round; }
+.region.selected { fill:#b4dbd2; stroke:#fff; }
+.region:focus-visible { outline:none; stroke:var(--nq-accent); stroke-width:3; }
+.leader { stroke:#80948f; stroke-width:1; pointer-events:none; }
+.labelButton { cursor:pointer; }
+.labelButton rect { fill:#fff; fill-opacity:.94; stroke:#d9dfe4; stroke-width:.6; }
+.label { fill:#52616d; font-size:11px; font-weight:600; pointer-events:none; }
+.labelSelected rect { fill:#136f63; stroke:#136f63; }
+.labelSelected .label { fill:#fff; font-weight:700; }

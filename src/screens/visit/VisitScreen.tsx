@@ -590,7 +590,7 @@ function VisitEditor({ initialDraft }: { initialDraft: VisitDraft | null }) {
             </button>
           </div>
 
-          <button type="button" className={styles.primary} onClick={saveEvaluation}>
+          <button type="button" className={`${styles.primary} ${styles.complete}`} onClick={saveEvaluation}>
             임장 완료
           </button>
           {existingVisits.length > 0 ? (

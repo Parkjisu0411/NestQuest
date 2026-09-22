@@ -211,3 +211,66 @@
 .sortBar { display:flex; align-items:center; justify-content:flex-end; gap:4px; padding:4px 12px; font-size:12px; }
 .sortBar select { width:auto; max-width:calc(100% - 44px); min-height:44px; border:0; background:transparent; font-size:12px; }
 .sortBar button { display:grid; place-items:center; width:44px; min-height:44px; padding:0; border:0; background:transparent; color:var(--nq-muted); }
+
+/* Count and ordering share one touch-friendly row. */
+.listHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--nq-line);
+}
+.listHeader .listHeading {
+  flex: 1;
+  padding: 0;
+  white-space: nowrap;
+}
+.listHeader .listToggle {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+.listHeader .listToggle::before { content: none; }
+.listHeader .sortBar { flex: none; gap: 0; padding: 0; }
+.listHeader .sortBar select { max-width: 124px; padding: 0 4px; color: var(--nq-ink); }
+.workspace { grid-template-rows: minmax(0, 1fr) 48px; }
+@media (max-width: 719px) {
+  .sortBar { display: none; }
+  .listOpen .sortBar { display: flex; }
+}
+@media (min-width: 720px) {
+  .workspace { grid-template-rows: minmax(0, 1fr); }
+}
+
+/* Prioritize the map and results over app chrome. */
+.page {
+  height: calc(100dvh - var(--nq-nav-height));
+  padding: max(4px, env(safe-area-inset-top)) 8px 4px;
+  gap: 2px;
+}
+.top { min-height: 52px; gap: 4px; }
+.titleGroup { flex: 1; min-width: 0; }
+.title { margin: 0; font-size: 18px; line-height: 1.3; }
+.context { margin-top: 2px; font-size: 11px; }
+.filterButton { flex: none; gap: 4px; min-height: 44px; padding: 0 10px; border-radius: 12px; font-size: 12px; }
+.options summary { min-width: 44px; min-height: 44px; }
+.header :global(.compact-sync):empty { display: none; }
+.header :global(.api-loading-status) { margin: 0; padding: 0; min-height: 32px; }
+.header :global(.api-loading-status button) { min-height: 32px; padding: 4px 8px; }
+.header :global(.compact-sync summary) { min-height: 32px; padding: 6px 0; }
+.mapSummary { padding: 4px 8px; font-size: 11px; }
+.list { padding-top: 0; }
+.pagination { padding: 0 8px; font-size: 11px; }
+.pagination button { padding: 0 10px; }
+@media (min-width: 720px) {
+  .page { padding: max(6px, env(safe-area-inset-top)) 12px 4px; }
+  .workspace, .workspace.listOpen { gap: 8px; }
+}
+@media (max-height: 520px) {
+  .page { height: auto; min-height: calc(100dvh - var(--nq-nav-height)); }
+}

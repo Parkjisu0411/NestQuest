@@ -326,3 +326,22 @@
 .actions { gap:8px; }
 .quickAction { position:fixed; z-index:30; bottom:0; left:50%; transform:translateX(-50%); width:min(100%,680px); padding:10px 16px max(12px,env(safe-area-inset-bottom)); background:var(--nq-surface); border-top:1px solid var(--nq-line); }
 .quickAction a { display:flex; justify-content:center; align-items:center; min-height:48px; text-decoration:none; border-radius:14px; }
+
+@media (min-width: 720px) {
+  .quickAction {
+    left: auto;
+    right: max(24px, calc((100% - var(--nq-page)) / 2 + var(--nq-pad-x)));
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    transform: none;
+    width: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .quickAction a {
+    min-width: 144px;
+    padding: 0 24px;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 16%);
+  }
+}
