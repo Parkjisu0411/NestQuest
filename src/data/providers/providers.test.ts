@@ -4,7 +4,7 @@ import { bodyItems, decodeServiceKey, fetchSeoulApartments, mapSeoulApartment, p
 import { attachDistrictTrades, attachTrades, fetchCommute, fetchDetail, parseTradeRows } from './enrich.ts'
 import { commuteQueryKey } from '../commuteSession.ts'
 
-vi.mock('./http.ts', async (original) => ({ ...await original<typeof import('./http.ts')>(), requestApi: vi.fn() }))
+vi.mock('./http.ts', async (original) => ({ ...await original<typeof import('./http.ts')>(), requestApi: vi.fn(), pauseProviderRequests: async (signal:AbortSignal) => { signal.throwIfAborted() } }))
 const now = '2026-09-18T00:00:00.000Z'
 const row = { kaptCode: 'A001', kaptName: '테스트단지', kaptAddr: '서울특별시 영등포구 여의도동 1', bjdCode: '1156011000' }
 const envelope = (item: unknown, totalCount = 1) => ({ response: { header: { resultCode: '00' }, body: { totalCount, items: { item } } } })
@@ -104,4 +104,49 @@ describe('provider contracts (synthetic fixtures, not live verification)', () =>
     vi.mocked(requestApi).mockResolvedValue({status:'NO_RESULTS'})
     await expect(fetchCommute(record,destination,'test',new AbortController().signal)).rejects.toMatchObject({kind:'no-route'})
   })
+})
+
+const gatewayError=(code:string)=>({OpenAPI_ServiceResponse:{cmmMsgHeader:{returnReasonCode:code}}})
+it('retries code 04 on the same list page and preserves prior pages',async()=>{
+ vi.mocked(requestApi)
+   .mockResolvedValueOnce(envelope([row],2))
+   .mockResolvedValueOnce(gatewayError('04'))
+   .mockResolvedValueOnce(envelope([{...row,kaptCode:'A002'}],2))
+ const progress=vi.fn()
+ expect(await fetchSeoulApartments('synthetic',new AbortController().signal,progress)).toHaveLength(2)
+ expect(vi.mocked(requestApi).mock.calls.map(call=>call[1].pageNo)).toEqual(['1','2','2'])
+ expect(progress).toHaveBeenCalledWith(expect.stringContaining('재시도 1/2'))
+})
+it('bounds list retries and does not retry authorization or quota failures',async()=>{
+ vi.mocked(requestApi).mockResolvedValue(gatewayError('04'))
+ await expect(fetchSeoulApartments('synthetic',new AbortController().signal,()=>{})).rejects.toMatchObject({kind:'network'})
+ expect(requestApi).toHaveBeenCalledTimes(3)
+ for(const [code,kind] of [['20','auth'],['22','limit']]) {
+   vi.mocked(requestApi).mockClear().mockResolvedValue(gatewayError(code))
+   await expect(fetchSeoulApartments('synthetic',new AbortController().signal,()=>{})).rejects.toMatchObject({kind})
+   expect(requestApi).toHaveBeenCalledTimes(1)
+ }
+})
+it('cancels list retries without another request',async()=>{
+ const controller=new AbortController()
+ vi.mocked(requestApi).mockResolvedValue(gatewayError('04'))
+ await expect(fetchSeoulApartments('synthetic',controller.signal,()=>controller.abort())).rejects.toMatchObject({name:'AbortError'})
+ expect(requestApi).toHaveBeenCalledTimes(1)
+})
+it('persists successful pages before a later network failure without claiming list completion',async()=>{
+ const saved:string[]=[]
+ vi.mocked(requestApi).mockResolvedValueOnce(envelope([row],2)).mockResolvedValue(gatewayError('04'))
+ const {fetchSidoApartments}=await import('./publicData.ts')
+ await expect(fetchSidoApartments('synthetic',new AbortController().signal,()=>{},'11',async records=>{
+   saved.push(...records.map(r=>r.apartment.id))
+ })).rejects.toMatchObject({kind:'network'})
+ expect(saved).toEqual(['kapt:A001'])
+ expect(vi.mocked(requestApi).mock.calls.map(call=>call[1].pageNo)).toEqual(['1','2','2','2'])
+})
+it('saves verified housing type before an optional facility lookup fails',async()=>{
+ const basic={response:{header:{resultCode:'00'},body:{item:{...row,codeAptNm:'아파트',kaptdaCnt:'120'}}}}
+ vi.mocked(requestApi).mockResolvedValueOnce(basic).mockResolvedValueOnce(gatewayError('04'))
+ const save=vi.fn(async()=>{})
+ await expect(fetchDetail(mapSeoulApartment(row,now),'synthetic',new AbortController().signal,save)).rejects.toMatchObject({kind:'network'})
+ expect(save).toHaveBeenCalledWith(expect.objectContaining({apartment:expect.objectContaining({housingType:'아파트',householdCount:120})}))
 })

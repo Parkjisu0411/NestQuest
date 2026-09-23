@@ -1,3 +1,5 @@
+import { independentProviderStages } from './providers/independentProviderStages.ts'
+import { ApiError } from './providers/http.ts'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { runCatalogSync } from './runCatalogSync.ts'
 import { parseCatalogSnapshot } from './catalogSnapshot.ts'
@@ -80,4 +82,43 @@ it('does not record completion when saving fails',async()=>{
   expect(h.saved.get('kapt:A')?.syncChecks?.price).toBeUndefined()
   await h.run(h.reload())
   expect(h.opts.prices).toHaveBeenCalledTimes(2)
+})
+
+it('prepares unseen metro districts before refreshing an already visible Seoul district',async()=>{
+ const seoul=record('Seoul')
+ const gyeonggi={...record('Gyeonggi',false),area:{sidoCode:'41',sidoName:'경기도',sigunguCode:'41111',sigunguName:'수원시 장안구'}}
+ const incheon={...record('Incheon',false),area:{sidoCode:'28',sidoName:'인천광역시',sigunguCode:'28185',sigunguName:'연수구'}}
+ const h=harness([seoul,gyeonggi,incheon])
+ const order:string[]=[]
+ h.opts.detail.mockImplementation(async r=>{order.push('detail:'+r.area.sigunguCode);return {...r,apartment:{...r.apartment,housingType:'아파트'}}})
+ h.opts.prices.mockImplementation(async rows=>{order.push('price:'+rows[0].area.sigunguCode);return rows})
+ await h.run()
+ expect(order.indexOf('detail:41111')).toBeLessThan(order.indexOf('price:11560'))
+ expect(order.indexOf('detail:28185')).toBeLessThan(order.indexOf('price:11560'))
+})
+it('finishes facts in every district before commuting and isolates a commute quota failure',async()=>{
+ const a=record('A')
+ const b={...record('B'),area:{sidoCode:'41',sidoName:'경기도',sigunguCode:'41210',sigunguName:'광명시'}}
+ const h=harness([a,b])
+ const order:string[]=[]
+ h.opts.prices.mockImplementation(async rows=>{order.push('price:'+rows[0].area.sigunguCode);return rows})
+ h.opts.commute.mockImplementation(async()=>{order.push('commute');throw new ApiError('synthetic quota','limit')})
+ await runCatalogSync([a,b],new Set([a.apartment.id,b.apartment.id]),{
+   ...h.opts,destination,stage:independentProviderStages(h.opts.signal,()=>{}),
+ })
+ expect(order).toEqual(['price:11560','price:41210','commute'])
+ expect(h.saved.get(b.apartment.id)?.syncChecks?.price).toBeDefined()
+})
+it('facts-only collection covers every target and spends no commute calls',async()=>{
+ const records=Array.from({length:60},(_,i)=>record('N'+i,false))
+ const h=harness(records)
+ await runCatalogSync(records,new Set(records.map(r=>r.apartment.id)),{...h.opts,destination,phase:'facts'})
+ expect(h.opts.detail).toHaveBeenCalledTimes(60)
+ expect(h.opts.prices).toHaveBeenCalledTimes(1)
+ expect(h.opts.commute).not.toHaveBeenCalled()
+ const ready=[...h.saved.values()]
+ await runCatalogSync(ready,new Set(ready.map(r=>r.apartment.id)),{...h.opts,destination,phase:'commute'})
+ expect(h.opts.detail).toHaveBeenCalledTimes(60)
+ expect(h.opts.prices).toHaveBeenCalledTimes(1)
+ expect(h.opts.commute).toHaveBeenCalledTimes(60)
 })

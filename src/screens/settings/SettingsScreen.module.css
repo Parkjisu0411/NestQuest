@@ -386,3 +386,5 @@
 .searchFooter { bottom:0; padding-bottom:max(16px,env(safe-area-inset-bottom)); border-top:0; }
 .searchFooter .apply { width:100%; }
 .note { line-height:1.6; font-weight:400; font-size:12px; }
+
+.areaMap { width:100%; max-width:560px; margin-inline:auto; min-width:0; }

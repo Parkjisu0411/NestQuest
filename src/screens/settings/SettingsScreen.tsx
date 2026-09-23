@@ -1,7 +1,9 @@
+import { METRO_SIDOS } from '../../data/metroAreas.ts'
+import { AreaSelector } from '../setup/AreaSelector.tsx'
 import { Icon } from '../../ui/Icon.tsx'
 import { isAndroidApp } from '../../platform/native.ts'
-import { useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useBrowse } from '../../app/browseContext.ts'
 import { listQuestHomeMatches } from '../../domain/discover.ts'
 import { useApartmentCatalog } from '../../data/useApartmentCatalog.ts'
@@ -36,11 +38,11 @@ import {
 } from '../../domain/models.ts'
 import { StationPicker } from '../../ui/StationPicker.tsx'
 import {
-  SEOUL_SIDO_CODE,
+
   groupedSetupRegions,
   mergeQuestAreas,
   questAreasForSido,
-  toQuestArea,
+
 } from '../../mock/areas.ts'
 import { PageChrome } from '../../ui/PageChrome.tsx'
 import { readBackupFile } from '../../persistence/photoBackup.ts'
@@ -91,17 +93,18 @@ function optionalDraft(value: number | undefined): string {
 export function SettingsScreen({ searchOnly = false }: { searchOnly?: boolean }) {
   const apartmentCatalog = useApartmentCatalog()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { setState: setBrowse, scrollTop: scrollTopRef } = useBrowse()
   const dispatch = useQuestDispatch()
   const persist = useQuestPersist()
   const { quest, apartmentQuestStates } = useQuestState()
   const [criteriaDraft, setCriteriaDraft] = useState(() => quest?.searchCriteria)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [openField, setOpenField] = useState<OpenField>(null)
+  const [openField, setOpenField] = useState<OpenField>(() => searchParams.get('edit') === 'areas' ? 'areas' : null)
   const [cashDraft, setCashDraft] = useState('')
   const [loanLimitDraft, setLoanLimitDraft] = useState('')
   const [numberDraft, setNumberDraft] = useState('')
-  const [areasDraft, setAreasDraft] = useState<QuestArea[]>([])
+  const [areasDraft, setAreasDraft] = useState<QuestArea[]>(() => quest?.searchCriteria.areas ?? [])
   const [destinationDraft, setDestinationDraft] = useState<CommuteDestination | undefined>(undefined)
   const [minutesDraft, setMinutesDraft] = useState('')
   const [ratePercent, setRatePercent] = useState('')
@@ -116,7 +119,7 @@ export function SettingsScreen({ searchOnly = false }: { searchOnly?: boolean })
 
   const criteria = searchOnly ? criteriaDraft : quest?.searchCriteria
   const loan = quest?.loanAssumption
-  const areaGroups = useMemo(() => groupedSetupRegions().filter(group => group.sidoCode === SEOUL_SIDO_CODE), [])
+
 
   if (!quest || !criteria || !loan) {
     return null
@@ -138,10 +141,6 @@ export function SettingsScreen({ searchOnly = false }: { searchOnly?: boolean })
         )
 
   const selectedCodes = new Set(areasDraft.map((area) => area.sigunguCode))
-  const seoulAreas = questAreasForSido(SEOUL_SIDO_CODE)
-  const allSeoulSelected =
-    seoulAreas.length > 0 &&
-    seoulAreas.every((area) => selectedCodes.has(area.sigunguCode))
 
   const ratePct = parseEnteredNumber(ratePercent)
   const years = parseEnteredNumber(termYears)
@@ -377,25 +376,17 @@ export function SettingsScreen({ searchOnly = false }: { searchOnly?: boolean })
           탐색 조건
         </h2>
         <label className={styles.field}>
-          <span><input type="checkbox" checked={criteria.includeUnknown !== false} disabled={openField !== null} onChange={(event) => applyCriteria({ ...criteria, includeUnknown: event.target.checked })} /> 정보 미확인 단지 포함</span>
+          <span><input type="checkbox" checked={criteria.includeUnknown !== false} disabled={openField !== null} onChange={(event) => applyCriteria({ ...criteria, includeUnknown: event.target.checked })} /> 정보 미확인 단지 포함</span><p>끄면 통근시간을 아직 조회하지 않은 단지도 통근 필터에서 제외됩니다.</p>
         </label>
 
         <SettingRow
           label="지역"
-          value={formatAreaSummary(criteria.areas, SIDO_AVAILABILITY)}
+          value={formatAreaSummary(criteria.areas, SIDO_AVAILABILITY)+' · 지도에서 변경'}
           open={openField === 'areas'}
           onToggle={() => toggleField('areas')}
         >
           <div className={styles.bulkRow}>
-            <button
-              type="button"
-              className={allSeoulSelected ? `${styles.chip} ${styles.chipOn}` : styles.chip}
-              aria-pressed={allSeoulSelected}
-              onClick={() => selectSido(SEOUL_SIDO_CODE)}
-            >
-              서울 전체
-            </button>
-
+            {METRO_SIDOS.map(s=><button key={s.code} type="button" className={styles.chip} aria-pressed={questAreasForSido(s.code).every(a=>selectedCodes.has(a.sigunguCode))} onClick={()=>selectSido(s.code)}>{s.label} 전체</button>)}
             <button
               type="button"
               className={styles.chip}
@@ -407,30 +398,9 @@ export function SettingsScreen({ searchOnly = false }: { searchOnly?: boolean })
               전체 해제
             </button>
           </div>
-          <p>실제 단지 수집과 경계 지도는 서울 25개 구를 지원합니다.</p>
-          {areaGroups.map((group) => (
-            <div key={group.sidoCode} className={styles.areaGroup}>
-              <p className={styles.groupLabel}>{group.sidoName}{group.sidoCode !== SEOUL_SIDO_CODE ? ' · 예시 자료' : ''}</p>
-              <div className={styles.chipRow}>
-                {group.regions.map((region) => {
-                  const selected = selectedCodes.has(region.sigunguCode)
-                  return (
-                    <button
-                      key={region.sigunguCode}
-                      type="button"
-                      className={selected ? `${styles.chip} ${styles.chipOn}` : styles.chip}
-                      aria-pressed={selected}
-                      onClick={() => toggleArea(toQuestArea(region))}
-                    >
-                      {region.sigunguName}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+          <div className={styles.areaMap}><AreaSelector selectedCodes={selectedCodes} onToggle={toggleArea} /></div>
           <p className={styles.note} aria-live="polite">
-            {formatAreaSummary(areasDraft, SIDO_AVAILABILITY)}
+            {areasDraft.length ? areasDraft.length+'개 시군구 선택' : '지도에서 지역을 선택하세요'}
           </p>
           {openField === 'areas' && hint ? <InlineHint message={hint} /> : null}
           <button type="button" className={styles.apply} onClick={applyAreas}>

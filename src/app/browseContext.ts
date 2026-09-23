@@ -2,6 +2,7 @@ import { createContext, useContext, type Dispatch, type RefObject, type SetState
 import type { StageFilterId } from '../domain/stages.ts'
 
 export interface BrowseState {
+  regionCode: string
   sort: 'default' | 'commute' | 'price' | 'name'
   stageFilter: StageFilterId
   showPassed: boolean
@@ -10,7 +11,7 @@ export interface BrowseState {
   listPage: number
 }
 export const initialBrowseState: BrowseState = {
-  sort: 'default', stageFilter: 'all', showPassed: false, selectedId: null, listOpen: false, listPage: 0,
+  regionCode: '', sort: 'default', stageFilter: 'all', showPassed: false, selectedId: null, listOpen: false, listPage: 0,
 }
 export const BrowseContext = createContext<{
   state: BrowseState

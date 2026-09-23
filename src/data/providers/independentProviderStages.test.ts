@@ -30,3 +30,16 @@ describe('independent automatic provider stages', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 })
+
+it('does not disable a whole service after one transient network failure',async()=>{
+ vi.useFakeTimers()
+ try{
+  const run=independentProviderStages(new AbortController().signal,vi.fn())
+  const failed=run('detail',async()=>{throw new ApiError('temporary','network')})
+  await vi.advanceTimersByTimeAsync(1000)
+  await failed
+  const next=vi.fn(async()=>{})
+  await run('detail',next)
+  expect(next).toHaveBeenCalledOnce()
+ }finally{vi.useRealTimers()}
+})

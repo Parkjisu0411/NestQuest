@@ -3,7 +3,7 @@
 import { loadEnv } from 'vite'
 import { keysFromEnvironment } from '../src/data/apiKeyConfig.ts'
 import { ENDPOINTS, ApiError, requestApi } from '../src/data/providers/http.ts'
-import { bodyItems, publicBody, decodeServiceKey, mapSeoulApartment, fetchSeoulApartments } from '../src/data/providers/publicData.ts'
+import { bodyItems, publicBody, decodeServiceKey, mapSeoulApartment, fetchSeoulApartments, fetchSidoApartments } from '../src/data/providers/publicData.ts'
 import { fetchDetail, fetchCommute, fetchDistrictTrades, parseTradeRows, attachDistrictTrades } from '../src/data/providers/enrich.ts'
 import { geocode } from '../src/data/providers/kakao.ts'
 import { geocodeApartment } from '../src/data/providers/geocodeApartment.ts'
@@ -31,6 +31,25 @@ async function check(name, run) {
     // Only controlled error categories; external errors may contain a credential URL.
     console.log(`${name}: FAIL ${phase} ${error instanceof ApiError ? error.kind : 'internal-or-timeout'}`)
   }
+}
+if (process.argv.includes('--lists-only')) {
+  const sidoArg=process.argv.find(arg=>/^--sido=(11|41|28)$/.test(arg))
+  for (const code of sidoArg ? [sidoArg.split('=')[1]] : ['11','41','28']) await check('시도 '+code+' 목록', async () => {
+    if (process.argv.includes('--all-pages')) {
+      let pages=0
+      const all=await fetchSidoApartments(keys.publicDataKey,signal,message=>{if(message.includes('건 조회')) pages++;phase='완료 페이지 '+pages},code)
+      const currentCodes=new Set((await import('../src/data/metroAreas.ts')).METRO_AREAS.map(a=>a.sigunguCode))
+      return '전체 페이지 검증 '+all.length+'건 / 현재 선택 지역 연결 '+all.filter(r=>currentCodes.has(r.area.sigunguCode)).length+'건'
+    }
+    const body = publicBody(await requestApi('list', {serviceKey:decodeServiceKey(keys.publicDataKey),sidoCode:code,pageNo:'1',numOfRows:'100'},signal))
+
+    const items=bodyItems(body)
+    const mapped=items.map(row=>mapSeoulApartment(row,new Date().toISOString()))
+    return '전체 '+Number(body.totalCount)+' / 첫 페이지 '+mapped.length+' / 시군구 '+new Set(mapped.map(r=>r.area.sigunguCode)).size
+  })
+  globalThis.fetch=nativeFetch
+  console.log('요청 '+calls+'회. 원문·키·응답 파일 저장 없음.')
+  process.exit(failed ? 1 : 0)
 }
 let records = [], detailed
 await check('공공 단지 목록', async () => {

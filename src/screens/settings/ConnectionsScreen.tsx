@@ -1,3 +1,4 @@
+import { preparationReport, type PreparationOutcome } from '../../data/preparation.ts'
 import { LiveDataSync } from '../../ui/LiveDataSync.tsx'
 import { createBootstrap, bootstrapSummary } from '../../data/bootstrap.ts'
 import { downloadJsonFile } from '../../persistence/download.ts'
@@ -12,10 +13,10 @@ import { getApiSettings } from '../../data/apiSettings.ts'
 import { useApartmentCatalog } from '../../data/useApartmentCatalog.ts'
 import { useQuestDispatch, useQuestState } from '../../app/useQuest.ts'
 import { useQuestPersist } from '../../app/persistContext.ts'
-import { fetchSeoulApartments } from '../../data/providers/publicData.ts'
+import { fetchMetroApartments } from '../../data/providers/publicData.ts'
 import { attachDistrictTrades, fetchCommute, fetchDetail, fetchDistrictTrades } from '../../data/providers/enrich.ts'
 import { geocode } from '../../data/providers/kakao.ts'
-import { SEOUL_AREAS } from '../../data/seoulAreas.ts'
+import { METRO_AREAS as SEOUL_AREAS } from '../../data/metroAreas.ts'
 import { commuteQueryKey, setCommuteServiceIssue, useCommuteQueries } from '../../data/commuteSession.ts'
 import { hydrateCommute } from '../../data/providers/hydrateCommute.ts'
 import { savedCommute } from '../../data/commuteCache.ts'
@@ -29,6 +30,8 @@ import { isGeneralApartment } from '../../data/housingType.ts'
 import { markDistrictPrices } from '../../data/syncPlan.ts'
 
 export function ConnectionsScreen() {
+  const [verifiedScope, setVerifiedScope] = useState<string | null>(null)
+  const [preparationResult, setPreparationResult] = useState<PreparationOutcome | null>(null)
   const [preparing, setPreparing] = useState(false)
   const keys = getApiSettings()
   const [busy, setBusy] = useState(false)
@@ -58,18 +61,45 @@ export function ConnectionsScreen() {
   }
   const live = (state.catalogSnapshot?.records ?? catalog.list()).filter((record) => record.apartment.id.startsWith('kapt:'))
   const districtRecords = live.filter((record) => record.area.sigunguCode === district)
+  const districtMatches = state.quest ? listQuestHomeMatches(districtRecords.filter(r => isGeneralApartment(r.apartment)), state.quest.searchCriteria, {}) : []
+  const preparationScope = {areas:state.quest?.searchCriteria.areas.map(a=>a.sigunguCode) ?? [],destination:state.quest?.searchCriteria.commuteDestination}
+  const preparationRecords = live.filter(r=>preparationScope.areas.includes(r.area.sigunguCode))
+  const preparation = preparationReport(live,preparationScope)
+  const scopeKey=JSON.stringify(preparationScope)
+  const verified=verifiedScope===scopeKey
+  const selectedAreas=state.quest?.searchCriteria.areas ?? []
   return <main className={`${styles.page} ${connections.page}`}>
     <PageChrome backTo="/settings" backLabel="설정으로" />
     <h1>데이터 관리</h1>
     
     {busy ? <ApiLoadingStatus message={message} onCancel={() => controller.current?.abort()} /> : null}
     <details className={connections.group}><summary>APK 초기 자료</summary>
-      <p>저장된 자료 {live.length.toLocaleString()}개 · 개인 기록 제외</p>
+            <details><summary>준비 범위 · 선택한 {selectedAreas.length}개 시군구</summary><p>{selectedAreas.map(a=>a.sidoName+' '+a.sigunguName).join(', ') || '지역을 먼저 선택해 주세요.'}</p></details>
+      <p><Link to="/settings?edit=areas">지도에서 준비 지역 변경</Link></p>
+      <p>전체 저장 {preparation.stored}개 · 선택 지역 수집 {preparation.total}개 · 일반 아파트 {preparation.general}개</p>
+      <p role="status">선택 지역 {preparation.total} · 자료 확인 {preparation.ready} · 일부 결과 없음 {preparation.empty} · 미조회/갱신 대기 {preparation.pending} · 오류 {preparation.errors}</p>
+      <p>결과 없는 항목: 상세·위치 {preparation.emptyByStage.detail} · 가격 {preparation.emptyByStage.price} · 통근 {preparation.emptyByStage.commute} (중복 포함)</p>
+      <p>목록 검증 전에는 아직 수집하지 않은 단지가 집계에서 빠질 수 있습니다.</p>
+      <p>{preparationScope.destination ? '통근 기준: '+preparationScope.destination.name : '출근역 미설정 · 통근 준비 대상 없음'}</p>
+      {!preparation.complete && preparation.total > 0 ? <details><summary>미완료 내역</summary><ul>{preparation.rows.filter(r=>r.status==='pending'||r.status==='error').slice(0,30).map(r=><li key={r.id}>{r.name} · {r.detail==='pending'||r.detail==='error' ? '상세·위치 ' : ''}{r.price==='pending'||r.price==='error' ? '가격 ' : ''}{r.commute==='pending'||r.commute==='error' ? '통근 ' : ''}{r.status==='error'?'오류':'대기'}</li>)}</ul></details> : null}
       <p>선택한 지역 전체를 준비합니다. 화면을 유지하고, 완료 후 내보내세요. API 한도에 도달하면 저장한 부분부터 나중에 이어서 준비할 수 있습니다.</p>
-      <button disabled={busy} onClick={() => setPreparing(value=>!value)}>{preparing ? '전체 준비 종료' : '전체 자료 준비'}</button>
-      {preparing ? <LiveDataSync full /> : null}
-      <button disabled={busy || preparing || !live.length} onClick={() => void run(async () => {
-        const seed = createBootstrap(live)
+      <p>{verified ? '전체 준비 검증 완료 · 내보낼 수 있습니다.' : '전체 자료 준비로 목록과 확인 상태를 검증한 뒤 내보내세요.'}</p>
+      <button disabled={busy || !selectedAreas.length} onClick={() => {
+        setVerifiedScope(null)
+        setPreparationResult(preparing ? {complete:false,message:'준비를 중단했습니다. 저장된 자료부터 다시 준비할 수 있습니다.',issues:{}} : null)
+        setPreparing(value=>!value)
+      }}>{preparing ? '전체 준비 종료' : '전체 자료 준비'}</button>
+      {preparing ? <LiveDataSync full onFinished={outcome => {
+        setVerifiedScope(outcome.complete ? scopeKey : null)
+        setPreparationResult(outcome)
+        setPreparing(false)
+      }} /> : null}
+      {preparationResult ? <div role={preparationResult.complete ? 'status' : 'alert'}>
+        <p>{preparationResult.message}</p>
+        {Object.entries(preparationResult.issues).map(([service,reason])=><p key={service}>{service}: {reason}</p>)}
+      </div> : null}
+      <button disabled={busy || preparing || !verified || !preparation.complete} onClick={() => void run(async () => {
+        const seed = createBootstrap(preparationRecords,new Date().toISOString(),preparationScope)
         const summary = bootstrapSummary(seed)
         await downloadJsonFile('nestquest-bootstrap.json',JSON.stringify(seed))
         setMessage(`내보내기 완료 · 전체 ${summary.total} · 위치 ${summary.located} · 가격 ${summary.priced} · 통근 ${summary.commutes}`)
@@ -77,24 +107,26 @@ export function ConnectionsScreen() {
     </details>
     <fieldset disabled={preparing} style={{ border: 0, padding: 0, minWidth: 0 }}>
       <details className={connections.group}><summary>API 키</summary><ApiKeyStatus settings={keys} /></details>
-      <details className={connections.group}><summary>서울 단지 목록</summary>
+      <details className={connections.group}><summary>선택 지역 단지 목록</summary>
       <p>{live.length.toLocaleString()}개 저장됨</p>
       <button disabled={busy} onClick={() => void run(async (signal) => {
-        const records = await fetchSeoulApartments(keys.publicDataKey, signal, setMessage)
+        const records = await fetchMetroApartments(keys.publicDataKey, signal, setMessage, [...new Set(preparationScope.areas.map(code=>code.slice(0,2)))])
         signal.throwIfAborted()
         await persist.saveCatalog(records)
-        setMessage(`서울 단지 ${records.length.toLocaleString()}개를 저장했습니다.`)
-      })}>서울 전체 단지 가져오기</button>{' '}
-      <button onClick={() => { dispatch({ type: 'updateQuest', searchCriteria: { ...state.quest!.searchCriteria, areas: SEOUL_AREAS } }); setMessage('탐색 범위를 서울 25개 구로 설정했습니다.') }}>탐색 범위 서울 전체로</button>
+        setMessage(`수도권 단지 ${records.length.toLocaleString()}개를 저장했습니다.`)
+      })}>선택 지역 단지 가져오기</button>{' '}
+      <button onClick={() => { dispatch({ type: 'updateQuest', searchCriteria: { ...state.quest!.searchCriteria, areas: SEOUL_AREAS } }); setMessage('탐색 범위를 수도권 전체로 설정했습니다.') }}>탐색 범위 수도권 전체로</button>
       </details><details className={connections.group}><summary>상세정보와 지도 위치</summary>
-      <label>조회할 구 <select value={district} onChange={(event) => setDistrict(event.target.value)}>{SEOUL_AREAS.map((area) => <option key={area.sigunguCode} value={area.sigunguCode}>{area.sigunguName}</option>)}</select></label>
-      <p>{districtRecords.length}개 · 20개씩 조회</p>
+      <label>조회할 시군구 <select value={district} onChange={(event) => setDistrict(event.target.value)}>{SEOUL_AREAS.map((area) => <option key={area.sigunguCode} value={area.sigunguCode}>{area.sigunguName}</option>)}</select></label>
+      <p>수집 {districtRecords.length}개 · 일반 아파트 {districtRecords.filter(r => isGeneralApartment(r.apartment)).length}개 · 유형 미확인 {districtRecords.filter(r => !r.apartment.housingType || r.apartment.housingType === '미확인').length}개 · 위치 확인 {districtRecords.filter(r => isGeneralApartment(r.apartment) && r.apartment.latitude !== undefined && r.apartment.longitude !== undefined).length}개</p>
+      <p>현재 필터 통과 {districtMatches.length}개 · 지도 표시 가능 {districtMatches.filter(r => r.apartment.latitude !== undefined && r.apartment.longitude !== undefined).length}개</p>
+      <p>20개씩 조회합니다. 유형 미확인은 필터의 미확인 포함 여부와 관계없이 탐색에서 숨겨집니다.</p>
       <label><input type="checkbox" checked={refreshDetails} onChange={(event) => setRefreshDetails(event.target.checked)} />이미 확인한 상세정보도 갱신</label>
       <button disabled={busy || !districtRecords.length} onClick={() => void run(async (signal) => {
         const pending = nextDetailBatch(districtRecords, detailAttempts, refreshDetails, !!keys.kakaoRestKey.trim())
         const completed = await processDetailBatch(pending, {
           signal, refresh: refreshDetails,
-          detail: (record) => fetchDetail(record, keys.publicDataKey, signal),
+          detail: (record) => fetchDetail(record, keys.publicDataKey, signal, basic=>persist.saveCatalog([basic])),
           geocode: keys.kakaoRestKey.trim() ? (address) => geocode(address, keys.kakaoRestKey, signal, refreshDetails) : undefined,
           save: persist.saveCatalog,
           report: (id, result) => setDetailAttempts((current) => new Map(current).set(id,result)),

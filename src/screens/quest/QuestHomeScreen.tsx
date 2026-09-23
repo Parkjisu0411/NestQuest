@@ -1,3 +1,4 @@
+import { METRO_SIDOS } from '../../data/metroAreas.ts'
 import { Icon } from '../../ui/Icon.tsx'
 
 import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -34,7 +35,7 @@ const SIDO_AVAILABILITY: SidoAvailability[] = groupedSetupRegions().map((group) 
 export function QuestHomeScreen() {
   const apartmentCatalog = useApartmentCatalog()
   const dispatch = useQuestDispatch()
-  const { quest, apartmentQuestStates, visitsByApartmentId, userEvaluations } =
+  const { quest, apartmentQuestStates, visitsByApartmentId, userEvaluations, catalogSnapshot } =
     useQuestState()
   const { state: browse, setState: setBrowse, scrollTop: scrollTopRef } = useBrowse()
   const { stageFilter, showPassed, selectedId, listOpen } = browse
@@ -61,9 +62,12 @@ export function QuestHomeScreen() {
     [apartmentQuestStates, quest, apartmentCatalog],
   )
 
+  const availableAreas=useMemo(()=>[...new Map([...(quest?.searchCriteria.areas ?? []),...matches.map(m=>m.area)].map(a=>[a.sigunguCode,a])).values()].sort((a,b)=>a.sigunguName.localeCompare(b.sigunguName,'ko')),[quest,matches])
+  const regionCode=availableAreas.some(a=>a.sigunguCode.startsWith(browse.regionCode)) ? browse.regionCode : ''
+  const provinceCode=regionCode.slice(0,2)
   const items = useMemo(
     () =>
-      matches.map((match) => {
+      matches.filter(match=>match.area.sigunguCode.startsWith(regionCode)).map((match) => {
         const apartmentId = match.apartment.id
         const visits = visitsByApartmentId[apartmentId] ?? []
         return {
@@ -79,7 +83,7 @@ export function QuestHomeScreen() {
             : undefined,
         }
       }),
-    [apartmentQuestStates, matches, quest, userEvaluations, visitsByApartmentId],
+    [apartmentQuestStates, matches, quest, userEvaluations, visitsByApartmentId, regionCode],
   )
 
   const counts = useMemo(() => countStages(items), [items])
@@ -96,7 +100,7 @@ export function QuestHomeScreen() {
   }, [apartmentQuestStates, items, showPassed, stageFilter, browse.sort, visitsByApartmentId])
 
   const [sortRevision, setSortRevision] = useState(0)
-  const orderKey = JSON.stringify([quest?.searchCriteria, stageFilter, browse.sort, showPassed, apartmentQuestStates, visitsByApartmentId, sortRevision])
+  const orderKey = JSON.stringify([quest?.searchCriteria, stageFilter, browse.sort, regionCode, showPassed, apartmentQuestStates, visitsByApartmentId, sortRevision])
   const [orderSnapshot, setOrderSnapshot] = useState<{key:string; ids:string[]}>({key:'',ids:[]})
   const visibleItems = orderSnapshot.key === orderKey ? preserveBrowseOrder(sortedItems,orderSnapshot.ids) : sortedItems
   const visibleIds = visibleItems.map(item => item.match.apartment.id)
@@ -159,7 +163,8 @@ export function QuestHomeScreen() {
   const selected = visibleItems.find((item) => item.match.apartment.id === selectedId)
   const filterCounts = { confirmed:0, unknown:0, retained:0 }
   const regionCodes = new Set(quest.searchCriteria.areas.map(area => area.sigunguCode))
-  const regionRecords = apartmentCatalog.list().filter(record => regionCodes.has(record.area.sigunguCode))
+  const regionRecords = (catalogSnapshot?.records ?? apartmentCatalog.list()).filter(record => regionCodes.has(record.area.sigunguCode) && record.area.sigunguCode.startsWith(regionCode))
+  const pendingType=regionRecords.filter(r=>!r.apartment.housingType || r.apartment.housingType==='미확인').length
   const coverage = {
     basic: regionRecords.filter(record => record.source?.provider === '국토교통부 공동주택 기본정보').length,
     location: regionRecords.filter(record => record.apartment.latitude !== undefined && record.apartment.longitude !== undefined).length,
@@ -189,11 +194,16 @@ export function QuestHomeScreen() {
               }} /> 미확인 포함</label>
               <p>충족 {filterCounts.confirmed} · 확인 대기 {filterCounts.unknown} · 보관 {filterCounts.retained}</p>
               <p>정보 {coverage.basic} · 위치 {coverage.location} · 가격 {coverage.price} · 통근 {coverage.commute}</p>
+              {METRO_SIDOS.map(s=>{
+                const rows=(catalogSnapshot?.records ?? []).filter(r=>r.area.sidoCode===s.code&&regionCodes.has(r.area.sigunguCode))
+                if(!quest.searchCriteria.areas.some(a=>a.sidoCode===s.code)) return null
+                return <p key={s.code}>{s.label} 수집 {rows.length} · 유형 확인 {rows.filter(r=>r.apartment.housingType&&r.apartment.housingType!=='미확인').length}</p>
+              })}
               <Link to="/connections">데이터 관리</Link>
             </div>
           </details>
         </div>
-        <LiveDataSync apartmentId={selectedId ?? undefined} mapApartmentIds={pageItems.map(item=>item.match.apartment.id)} />
+        <LiveDataSync browseScope={JSON.stringify([quest.searchCriteria, stageFilter, browse.sort, browse.listPage, sortRevision, showPassed])} apartmentId={selectedId ?? undefined} mapApartmentIds={pageItems.map(item=>item.match.apartment.id)} />
       </header>
 
       <StageFilter value={stageFilter} counts={counts} onChange={(value) => {
@@ -204,7 +214,7 @@ export function QuestHomeScreen() {
       <div className={`${styles.workspace} ${listOpen ? styles.listOpen : ''}`}>
       <section className={styles.mapPanel} aria-label="단지 지도">
       <div className={styles.mapCanvas}>
-      <Suspense fallback={<p role="status">지도를 준비하고 있습니다.</p>}><KakaoApartmentMap selectedAreas={quest.searchCriteria.areas} commuteDestination={quest.searchCriteria.commuteDestination} apartments={mapApartments} focusedId={selected?.match.apartment.id ?? null} onSelect={(id) => selectApartment(id, true)} /></Suspense>
+      <Suspense fallback={<p role="status">지도를 준비하고 있습니다.</p>}><KakaoApartmentMap selectedAreas={regionCode ? availableAreas.filter(a=>a.sigunguCode.startsWith(regionCode)) : quest.searchCriteria.areas} commuteDestination={regionCode ? undefined : quest.searchCriteria.commuteDestination} apartments={mapApartments} focusedId={selected?.match.apartment.id ?? null} onSelect={(id) => selectApartment(id, true)} /></Suspense>
       </div>
       <div className={styles.mapSummary}>
         {selected ? <>
@@ -238,6 +248,24 @@ export function QuestHomeScreen() {
         </>}
       </div>
         </div>
+        <div className={styles.regionBar} role="group" aria-label="지도와 목록 지역 보기">
+          <select aria-label="시도 보기" value={provinceCode} onChange={event=>{
+            resetList()
+            setBrowse(current=>({...current,regionCode:event.target.value,selectedId:null}))
+          }}>
+            <option value="">모든 지역</option>
+            {METRO_SIDOS.filter(s=>availableAreas.some(a=>a.sidoCode===s.code)).map(s=><option key={s.code} value={s.code}>{s.label}</option>)}
+          </select>
+          <select aria-label="시군구 보기" value={regionCode.length===5 ? regionCode : ''} onChange={event=>{
+            resetList()
+            setBrowse(current=>({...current,regionCode:event.target.value || provinceCode,selectedId:null}))
+          }}>
+            <option value="">시·군·구 전체</option>
+            {METRO_SIDOS.filter(s=>!provinceCode||s.code===provinceCode).map(s=><optgroup key={s.code} label={s.label}>
+              {availableAreas.filter(a=>a.sidoCode===s.code).map(a=><option key={a.sigunguCode} value={a.sigunguCode}>{a.sigunguName}</option>)}
+            </optgroup>)}
+          </select>
+        </div>
         <div className={styles.listContent} id="apartment-list" ref={listRef} onScroll={(event) => { if (event.currentTarget.clientHeight > 0) scrollTopRef.current = event.currentTarget.scrollTop }}>
 
       {stageFilter === 'shortlist' ? (
@@ -270,8 +298,10 @@ export function QuestHomeScreen() {
           <div className={styles.empty}>
             <span className={styles.emptyIcon}><Icon name="map" size={24} /></span>
             <p role="status">{stageFilter === 'all'
-              ? '조건에 맞는 아파트가 없어요'
+              ? !regionRecords.length ? '이 지역의 단지 목록을 아직 가져오지 못했어요' : pendingType ? '아파트 정보를 확인하고 있어요' : '조건에 맞는 아파트가 없어요'
               : '아직 담긴 아파트가 없어요'}</p>
+            {pendingType > 0 ? <p>주택 유형 확인 대기 {pendingType}개</p> : null}
+            {stageFilter === 'all' && (!regionRecords.length || pendingType > 0) ? <Link to="/connections">자료 조회 상태 확인</Link> : null}
             {stageFilter === 'all' ? <Link to="/filters" className={styles.emptyAction}><Icon name="filter" size={18} />필터 변경</Link>
               : <button type="button" className={styles.emptyAction} onClick={() => {
                 resetList()

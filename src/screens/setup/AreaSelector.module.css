@@ -3,9 +3,22 @@
 .region { cursor:pointer; fill:#e7ebef; stroke:#fff; stroke-width:1.3; stroke-linejoin:round; }
 .region.selected { fill:#b4dbd2; stroke:#fff; }
 .region:focus-visible { outline:none; stroke:var(--nq-accent); stroke-width:3; }
-.leader { stroke:#80948f; stroke-width:1; pointer-events:none; }
+
 .labelButton { cursor:pointer; }
 .labelButton rect { fill:#fff; fill-opacity:.94; stroke:#d9dfe4; stroke-width:.6; }
 .label { fill:#52616d; font-size:11px; font-weight:600; pointer-events:none; }
 .labelSelected rect { fill:#136f63; stroke:#136f63; }
 .labelSelected .label { fill:#fff; font-weight:700; }
+
+.wrap > div[role="group"] { display:flex; flex-wrap:wrap; gap:6px; margin-block:6px; }
+.wrap > div[role="group"] button { min-height:44px; padding:6px 12px; font-size:13px; }
+.wrap > div[role="group"] button[aria-pressed="true"] { background:var(--nq-accent); color:var(--nq-on-accent); }
+.wrap > small { color:var(--nq-muted); font-size:11px; }
+
+.mapFrame { position:relative; overflow:hidden; border:1px solid var(--nq-line); border-radius:var(--nq-radius); }
+.map { touch-action:none; cursor:grab; }
+.map:active { cursor:grabbing; }
+.zoomControls { position:absolute; right:8px; bottom:8px; display:grid; gap:4px; }
+.zoomControls button { width:44px; height:44px; padding:0; background:var(--nq-surface); border:1px solid var(--nq-line); border-radius:10px; font-size:22px; }
+.zoomControls button:disabled { opacity:.45; }
+.selection { margin:8px 0 0; font-size:13px; font-weight:600; }

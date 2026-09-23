@@ -1,8 +1,8 @@
+import metroMap from '../../data/map/metro-regions.json'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { getApiSettings } from '../../data/apiSettings.ts'
 import { loadKakaoMaps, type KakaoMapInstance, type KakaoMaps, type KakaoOverlay } from '../../data/map/kakaoSdk.ts'
 import { clusterPoints } from '../../data/map/geometry.ts'
-import { mapBundle } from '../../data/map/bundle.ts'
 import type { CommuteDestination, QuestArea, QuestStage } from '../../domain/models.ts'
 import { MAP_STAGE_ORDER } from '../../domain/browseSort.ts'
 import { QUEST_STAGE_LABELS } from '../../domain/stages.ts'
@@ -41,8 +41,8 @@ function markerIcon(stage: QuestStage) {
 }
 
 function fitRegions({ maps,map }: Ready, codes?: Set<string>) {
-  const selected = mapBundle?.regions.filter(region => !codes || codes.has(region.code)) ?? []
-  const regions = selected.length ? selected : mapBundle?.regions ?? []
+  const selected = metroMap.regions.filter(region => !codes || region.codes.some(code=>codes.has(code)))
+  const regions = selected.length ? selected : metroMap.regions
   const coordinates = regions.flatMap(region => region.polygons.flatMap(polygon => polygon.flat()))
   const bounds = new maps.LatLngBounds()
   for (const [longitude,latitude] of coordinates.length ? coordinates : [[126.76,37.42],[127.19,37.71]]) bounds.extend(new maps.LatLng(latitude,longitude))

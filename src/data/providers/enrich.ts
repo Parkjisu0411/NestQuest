@@ -1,3 +1,4 @@
+import { tradeDistrictCodes } from '../metroAreas.ts'
 import type { DiscoverableApartment } from '../../domain/discover.ts'
 import type { ApartmentUnitType, CommuteDestination, CommuteEstimate, Transaction } from '../../domain/models.ts'
 import { normalizeApartmentFacts } from '../normalizeApartment.ts'
@@ -8,7 +9,7 @@ import { comparableApartmentName, seoulLotAddress } from './address.ts'
 import { DAY, readProviderCache, tradeMonthCacheDays, writeProviderCache } from '../providerCache.ts'
 
 const text = (raw: unknown) => typeof raw === 'string' || typeof raw === 'number' ? String(raw).trim() : ''
-export async function fetchDetail(record: DiscoverableApartment, key: string, signal: AbortSignal): Promise<DiscoverableApartment> {
+export async function fetchDetail(record: DiscoverableApartment, key: string, signal: AbortSignal, onBasic?: (record:DiscoverableApartment)=>Promise<void>): Promise<DiscoverableApartment> {
   if (!record.apartment.id.startsWith('kapt:') || !record.apartment.externalId) return record
   if (!key.trim()) throw new ApiError('공공데이터 API 키를 먼저 입력해 주세요.', 'auth')
   const params = { ServiceKey: decodeServiceKey(key), kaptCode: record.apartment.externalId }
@@ -17,19 +18,22 @@ export async function fetchDetail(record: DiscoverableApartment, key: string, si
   if (!raw) throw new ApiError('단지 상세정보가 없습니다.', 'format')
   if (text(raw.kaptCode) !== record.apartment.externalId) throw new ApiError('요청한 단지와 응답의 코드가 다릅니다.', 'format')
   if (!text(raw.kaptAddr)) throw new ApiError('정확한 단지 주소가 없어 위치를 확정하지 않았습니다.', 'format')
+  const approval = text(raw.kaptUsedate)
+  const now = new Date().toISOString()
+  const result = normalizeApartmentFacts({ name: text(raw.kaptName) || record.apartment.name, address: text(raw.kaptAddr) || record.apartment.address,
+    householdCount: raw.kaptdaCnt, buildingCount: raw.kaptDongCnt, heatingType: raw.codeHeatNm,
+    approvalDate: /^\d{8}$/.test(approval) ? `${approval.slice(0,4)}-${approval.slice(4,6)}-${approval.slice(6)}` : undefined,
+    source: { provider: 'kapt', externalId: record.apartment.externalId, fetchedAt: now } })
+  if (!result.ok) throw new ApiError('단지 상세정보의 값이 올바르지 않습니다.', 'format')
+  const basic = { ...record, apartment: { ...record.apartment, ...result.value.facts, housingType: text(raw.codeAptNm) || '미확인', ...(text(raw.doroJuso) ? { roadAddress: text(raw.doroJuso) } : {}), updatedAt: now }, source: { provider: '국토교통부 공동주택 기본정보', fetchedAt: now } }
+  signal.throwIfAborted()
+  await onBasic?.(basic)
   const detailBody = publicBody(await requestApi('detail', params, signal))
   const detail = detailBody.item ? asObject(detailBody.item) : bodyItems(detailBody)[0]
   if (!detail || text(detail.kaptCode) !== record.apartment.externalId) throw new ApiError('상세 응답의 단지 코드를 확인할 수 없습니다.', 'format')
   const groundParking = text(detail.kaptdPcnt), undergroundParking = text(detail.kaptdPcntu)
   const parkingCount = /^\d+$/.test(groundParking) && /^\d+$/.test(undergroundParking) ? Number(groundParking) + Number(undergroundParking) : undefined
-  const approval = text(raw.kaptUsedate)
-  const now = new Date().toISOString()
-  const result = normalizeApartmentFacts({ name: text(raw.kaptName) || record.apartment.name, address: text(raw.kaptAddr) || record.apartment.address,
-    householdCount: raw.kaptdaCnt, buildingCount: raw.kaptDongCnt, heatingType: raw.codeHeatNm,
-    parkingCount, approvalDate: /^\d{8}$/.test(approval) ? `${approval.slice(0,4)}-${approval.slice(4,6)}-${approval.slice(6)}` : undefined,
-    source: { provider: 'kapt', externalId: record.apartment.externalId, fetchedAt: now } })
-  if (!result.ok) throw new ApiError('단지 상세정보의 값이 올바르지 않습니다.', 'format')
-  return { ...record, apartment: { ...record.apartment, ...result.value.facts, housingType: text(raw.codeAptNm) || '미확인', ...(text(raw.doroJuso) ? { roadAddress: text(raw.doroJuso) } : {}), updatedAt: now }, source: { provider: '국토교통부 공동주택 기본정보', fetchedAt: now } }
+  return { ...basic, apartment:{...basic.apartment,parkingCount} }
 }
 
 export interface TradeRow { aptSeq: string; name: string; districtCode: string; dong: string; lot: string; transaction: Omit<Transaction, 'apartmentId'> }
@@ -48,7 +52,7 @@ export function parseTradeRows(body: Record<string, unknown>, districtCode: stri
 }
 export function attachTrades(record: DiscoverableApartment, rows: TradeRow[], now: string): DiscoverableApartment {
   const lotAddress = seoulLotAddress(record.apartment.address)
-  const matches = rows.filter((row) => lotAddress && row.districtCode === record.area.sigunguCode && comparableApartmentName(row.name) === comparableApartmentName(record.apartment.name)
+  const matches = rows.filter((row) => lotAddress && tradeDistrictCodes(record.area.sigunguCode).includes(row.districtCode) && comparableApartmentName(row.name) === comparableApartmentName(record.apartment.name)
     && lotAddress === seoulLotAddress(`${record.area.sidoName} ${record.area.sigunguName} ${row.dong} ${row.lot}`))
   if (new Set(matches.map((row) => row.aptSeq)).size > 1) throw new ApiError('같은 주소에 여러 실거래 단지가 있어 자동 연결하지 않았습니다.', 'format')
   if (!matches.length) return record.transactions ? { ...record, transactions: [], unitTypes: record.unitTypes.map((unit) => {
@@ -103,12 +107,12 @@ export function attachDistrictTrades(records: readonly DiscoverableApartment[], 
     : record)
 }
 const cachedTradeRows = z.array(z.object({
-  aptSeq:z.string().min(1), name:z.string().min(1), districtCode:z.string().regex(/^11\d{3}$/), dong:z.string().min(1), lot:z.string().min(1),
+  aptSeq:z.string().min(1), name:z.string().min(1), districtCode:z.string().regex(/^(11|28|41)\d{3}$/), dong:z.string().min(1), lot:z.string().min(1),
   transaction:z.object({ id:z.string().min(1), exclusiveArea:z.number().positive(), price:z.number().positive().int(), floor:z.number().int(), contractDate:z.iso.date(), canceled:z.boolean() }),
 }))
-export async function fetchDistrictTrades(districtCode: string, key: string, signal: AbortSignal, progress: (message: string) => void, refresh = false): Promise<TradeRow[]> {
+async function fetchOneDistrictTrades(districtCode: string, key: string, signal: AbortSignal, progress: (message: string) => void, refresh = false): Promise<TradeRow[]> {
   if (!key.trim()) throw new ApiError('공공데이터 API 키를 먼저 입력해 주세요.', 'auth')
-  if (!/^11\d{3}$/.test(districtCode)) throw new ApiError('서울 자치구 코드가 필요합니다.', 'format')
+  if (!/^(11|28|41)\d{3}$/.test(districtCode)) throw new ApiError('수도권 시군구 코드가 필요합니다.', 'format')
   const today = new Date()
   const all: TradeRow[] = []
   for (let offset = 0; offset < 12; offset++) {
@@ -174,4 +178,16 @@ export async function fetchCommute(record: DiscoverableApartment, destination: C
   return { apartmentId: record.apartment.id, destinationId: destination.id, provider: 'Kakao', calculatedAt: new Date().toISOString(),
     totalMinutes: Math.round(route.properties.totalTime / 60), transferCount: route.properties.transfers,
     walkingMinutes: Math.round(segments.filter(part => part.type === 'WALK').reduce((sum,part) => sum+part.durationMinutes,0)), route: segments }
+}
+
+export async function fetchDistrictTrades(districtCode:string,key:string,signal:AbortSignal,progress:(message:string)=>void,refresh=false):Promise<TradeRow[]> {
+  const rows:TradeRow[]=[]
+  const prior=new Set<string>()
+  for(const code of tradeDistrictCodes(districtCode)) {
+    const batch=await fetchOneDistrictTrades(code,key,signal,progress,refresh)
+    const identity=(row:TradeRow)=>JSON.stringify([row.aptSeq,row.transaction,row.name,row.dong,row.lot])
+    rows.push(...batch.filter(row=>!prior.has(identity(row))))
+    for(const row of batch) prior.add(identity(row))
+  }
+  return rows
 }

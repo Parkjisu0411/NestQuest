@@ -1,3 +1,4 @@
+import { METRO_SIDOS } from '../../data/metroAreas.ts'
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { useQuestDispatch, useQuestState } from '../../app/useQuest.ts'
@@ -14,7 +15,6 @@ import {
 } from '../../domain/models.ts'
 import { StationPicker } from '../../ui/StationPicker.tsx'
 import {
-  SEOUL_SIDO_CODE,
   mergeQuestAreas,
   questAreasForSido,
 } from '../../mock/areas.ts'
@@ -174,11 +174,6 @@ export function SetupScreen() {
   )
   const reviewingPriorities = priorityIndex >= EVALUATION_METRIC_ORDER.length
   const activeMetric = EVALUATION_METRIC_ORDER[priorityIndex]
-  const seoulAreas = questAreasForSido(SEOUL_SIDO_CODE)
-  const allSeoulSelected =
-    seoulAreas.length > 0 &&
-    seoulAreas.every((area) => selectedCodes.has(area.sigunguCode))
-
   const canFinish =
     areas.length > 0 &&
     prioritiesComplete &&
@@ -387,15 +382,7 @@ export function SetupScreen() {
         <section className={styles.step}>
           <h1 className={styles.question}>탐색 지역</h1>
           <div className={styles.bulkRow}>
-            <button
-              type="button"
-              className={allSeoulSelected ? `${styles.bulk} ${styles.bulkOn}` : styles.bulk}
-              aria-pressed={allSeoulSelected}
-              onClick={() => selectSido(SEOUL_SIDO_CODE)}
-            >
-              서울 전체
-            </button>
-
+            {METRO_SIDOS.map(s=><button key={s.code} type="button" className={styles.bulk} aria-pressed={questAreasForSido(s.code).every(a=>selectedCodes.has(a.sigunguCode))} onClick={()=>selectSido(s.code)}>{s.label} 전체</button>)}
             <button type="button" className={styles.bulk} onClick={clearAreas}>
               전체 해제
             </button>
@@ -405,7 +392,7 @@ export function SetupScreen() {
           <p className={styles.selectedAreas} aria-live="polite">
             {areas.length === 0
               ? '지도에서 지역을 선택하세요'
-              : allSeoulSelected ? '서울 전체 선택' : `${areas.length}개 구 선택`}
+              : `${areas.length}개 시군구 선택`}
           </p>
         </section>
       ) : null}

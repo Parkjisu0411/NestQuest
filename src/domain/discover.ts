@@ -18,6 +18,7 @@ import type {
 import { withNormalizedShortlistRanks } from './shortlist.ts'
 
 export interface DiscoverableApartment {
+  syncErrors?: Partial<Record<'detail' | 'price' | 'commute', { at: string }>>
   syncChecks?: Partial<Record<'detail' | 'price' | 'noRoute', { key: string; at: string }>>
   source?: { provider: string; fetchedAt: string }
   apartment: Apartment

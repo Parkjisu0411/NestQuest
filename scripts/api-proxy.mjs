@@ -18,7 +18,7 @@ export async function apiProxy(request, response, next = () => {}) {
   if (!endpoint || request.method !== 'GET' || url.search.length > 4096) { response.writeHead(400); response.end(); return }
   try {
     const headers = (endpoint === endpoints.geocode || endpoint === endpoints.commute) && typeof request.headers.authorization === 'string'
-      ? { Authorization: request.headers.authorization } : undefined
+      ? { Authorization: request.headers.authorization } : { 'Content-Type':'application/json; charset=UTF-8' }
     const result = await fetch(endpoint + url.search, { headers, signal: AbortSignal.timeout(20000), redirect: 'error' })
     const text = await result.text()
     if (text.length > 20_000_000) throw new Error('Response too large')

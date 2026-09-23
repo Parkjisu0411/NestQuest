@@ -20,6 +20,7 @@ try {
     await mkdir('local-data',{recursive:true})
     await writeFile(local,text)
     await writeFile('public/bootstrap.json',text)
+    if (!seed.preparation) console.warn('기존 초기 자료: 전체 준비 완료가 검증되지 않은 파일입니다. 데이터 관리에서 전체 준비 후 다시 내보내세요.')
     console.log('APK 초기 자료 준비:',bootstrapSummary(seed))
   }
 } catch {

@@ -47,3 +47,12 @@
 아파트 탐색은 카카오 Maps JavaScript SDK와 CustomOverlay를 사용한다. 초기 설정의 서울 구 선택 지도만 자체 SVG로 유지한다. 지도에 출근역·자체 지하철 레이어를 추가하지 않는다. 화면 픽셀 기준 아파트 묶음, 단지 선택과 목록 연동, 필터 반영, ResizeObserver relayout, SDK 오류·시간 초과·재시도를 처리한다. 지도는 인터넷 연결이 필요하며 실패해도 목록/임장 저장은 유지된다.
 
 로컬 NESTQUEST_KAKAO_JAVASCRIPT_KEY를 사용하며 실제 실행 origin을 JavaScript SDK 도메인에 등록한다. 개발/검증용 주소와 APK https://localhost를 각각 등록한다. REST 주소 변환 키는 유지한다. 추가 지도 키는 백업에 넣지 않는다.
+
+## 수도권 확장 · 2026-09-23
+- 법정 시군구: 행정표준코드관리시스템 https://www.code.go.kr/stdcode/regCodeL.do 의 공개 전체자료를 사용한다. src/data/metroCodeData.ts에 현존·폐지 구분과 유일하게 대응되는 개편 전후 법정동 대응을 보관한다.
+- 재생성: node scripts/prepare-metro-codes.mjs (공개 파일, 인증키 불필요). 이 스크립트는 ZIP의 텍스트 자료를 읽고 수도권 코드만 추린다.
+- 선택 경계: 기존 SGIS 2025-06-30 전국 SHP 원본에서 수도권을 추출한다. node --experimental-strip-types scripts/prepare-metro-map.mjs tmp-map
+- 서울은 구, 경기는 시·군 단위 지도와 선택한 시의 하위 구 조정으로 제공한다.
+- 인천의 제물포·영종 및 서해·검단은 개편 전 경계의 합집합/외곽을 묶음으로 제공하고 현행 구는 버튼으로 세부 조정한다. 2026년의 새로운 구별 경계로 가장하지 않는다.
+- 실제 아파트 지도는 카카오 지도다. 역 검색은 기존 783개 역 자료 범위를 유지한다. 수도권 모든 신설역을 추가했다는 의미는 아니다.
+- 개편 전후 거래는 주소·법정동을 정규화하고 2026년 개편 지역에 한해 이전 구 코드도 조회한다. 이름이 모호한 경우 자동으로 합치지 않는다.

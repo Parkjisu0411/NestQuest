@@ -26,6 +26,7 @@ const recordSchema = z.object({
   research: z.array(z.object({ id, questId: id, apartmentId: id, category: z.enum(['COMMERCIAL','SCHOOL_DISTRICT']), summary: text,
     sources: z.array(z.object({ title: text.optional(), url: z.url().optional(), publisher: text.optional() })), researchedAt: time })).optional(),
   source: z.object({ provider: text, fetchedAt: time }).optional(),
+  syncErrors: z.object({ detail:z.object({at:time}).optional(), price:z.object({at:time}).optional(), commute:z.object({at:time}).optional() }).optional(),
   syncChecks: z.object({
     detail:z.object({key:z.string().max(10000),at:time}).optional(),
     price:z.object({key:z.string().max(10000),at:time}).optional(),
@@ -73,7 +74,7 @@ export function mergeCatalog(previous: CatalogSnapshot | undefined, incoming: Di
       if (!previous || previous.calculatedAt <= item.calculatedAt) commutes.set(key, item)
     }
     const merged = old && record.source?.provider === '국토교통부 공동주택 단지 목록'
-      ? { ...old, ...record, apartment: { ...record.apartment, ...old.apartment }, source: old.source ?? record.source, unitTypes: old.unitTypes, commutes: old.commutes, transactions: old.transactions, syncChecks:old.syncChecks }
+      ? { ...old, ...record, apartment: { ...record.apartment, ...old.apartment }, source: old.source ?? record.source, unitTypes: old.unitTypes, commutes: old.commutes, transactions: old.transactions, syncChecks:old.syncChecks, syncErrors:old.syncErrors }
       : record
     records.set(record.apartment.id, { ...merged, commutes: [...commutes.values()] })
   }

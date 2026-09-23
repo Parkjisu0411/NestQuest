@@ -274,3 +274,11 @@
 @media (max-height: 520px) {
   .page { height: auto; min-height: calc(100dvh - var(--nq-nav-height)); }
 }
+
+.regionBar { display:flex; flex:none; align-items:center; gap:6px; min-width:0; padding:0 8px; border-bottom:1px solid var(--nq-line); }
+.regionBar select { flex:1; min-width:0; width:0; min-height:40px; padding:0 6px; border:0; background:transparent; font-size:12px; }
+@media (max-width:719px) {
+  .regionBar { display:none; }
+  .listOpen .regionBar { display:flex; }
+}
+.listPanel { grid-template-rows:auto auto minmax(0,1fr) auto; }

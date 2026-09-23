@@ -75,3 +75,12 @@ it('does not consume price requests or mark completion for deferred districts',a
  await runCatalogSync([r],new Set([r.apartment.id]),{signal:new AbortController().signal,priceDistricts:new Set(),detail:async()=>r,prices,commute:async()=>{},save,stage:async(_name,work)=>work(),progress:()=>{}})
  expect(prices).not.toHaveBeenCalled();expect(save).not.toHaveBeenCalled()
 })
+
+it('does not replace verified housing facts with a newer alternate public list',()=>{
+ const old=record()
+ const incoming=mapSeoulApartment({kaptCode:'A',kaptName:'list only',kaptAddr:'서울특별시 영등포구 여의도동 1',bjdCode:'1156011000'},'2026-09-23T00:00:00.000Z')
+ incoming.source={provider:'K-apt 공개 단지 목록',fetchedAt:'2026-09-23T00:00:00.000Z'}
+ const merged=mergeBootstrap({mode:'live',records:[old]},createBootstrap([incoming]))
+ expect(merged.records[0].apartment.housingType).toBe('아파트')
+ expect(merged.records[0].apartment.name).toBe(old.apartment.name)
+})

@@ -23,9 +23,9 @@ describe('bulk search-area selection', () => {
     )
   })
 
-  test('does not invent an Incheon bulk action when Incheon is absent', () => {
-    expect(hasSidoAreas(INCHEON_SIDO_CODE)).toBe(false)
-    expect(questAreasForSido(INCHEON_SIDO_CODE)).toEqual([])
+  test('includes current Incheon districts', () => {
+    expect(hasSidoAreas(INCHEON_SIDO_CODE)).toBe(true)
+    expect(questAreasForSido(INCHEON_SIDO_CODE)).toHaveLength(11)
   })
 
   test('merges bulk selection into individual QuestArea[] state', () => {

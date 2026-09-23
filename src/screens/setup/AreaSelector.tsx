@@ -1,71 +1,102 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { geoMercator } from 'd3-geo'
+import { select } from 'd3-selection'
+import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from 'd3-zoom'
 import type { QuestArea } from '../../domain/models.ts'
-import { mapBundle, mapBundleMessage } from '../../data/map/bundle.ts'
-import { SEOUL_AREAS } from '../../data/seoulAreas.ts'
+import metroMap from '../../data/map/metro-regions.json'
+import { METRO_AREAS, METRO_SIDOS } from '../../data/metroAreas.ts'
 import styles from './AreaSelector.module.css'
 
 interface AreaSelectorProps {
   selectedCodes: ReadonlySet<string>
   onToggle: (area: QuestArea) => void
 }
-
+const WIDTH=360, HEIGHT=400
 export function AreaSelector({ selectedCodes, onToggle }: AreaSelectorProps) {
-  const shapes = useMemo(() => {
-    if (!mapBundle) return []
-    const projection = geoMercator().fitExtent([[22,18],[338,312]], {
-      type: 'MultiPoint', coordinates: mapBundle.regions.flatMap(region => region.polygons.flatMap(polygon => polygon.flat())),
+  const svgRef=useRef<SVGSVGElement>(null)
+  const zoomRef=useRef<ZoomBehavior<SVGSVGElement,unknown> | null>(null)
+  const [transform,setTransform]=useState<ZoomTransform>(zoomIdentity)
+  const [groupId,setGroupId]=useState<string|null>(null)
+  const group=metroMap.regions.find(r=>r.id===groupId)
+  function toggleGroup(region:typeof metroMap.regions[number]) {
+    setGroupId(region.id)
+    const all=region.codes.every(code=>selectedCodes.has(code))
+    for(const code of region.codes) if(all||!selectedCodes.has(code)) onToggle(METRO_AREAS.find(a=>a.sigunguCode===code)!)
+  }
+  const shapes=useMemo(()=>{
+    const projection=geoMercator().fitExtent([[16,20],[WIDTH-16,HEIGHT-20]],{
+      type:'MultiPoint',coordinates:metroMap.regions.flatMap(r=>r.polygons.flatMap(p=>p.flat())),
     })
-    const regions = mapBundle.regions.map(region => {
-      const point = projection(region.label)!
-      return { ...region,
-        path: region.polygons.flatMap(polygon => polygon.map(ring => ring.map((coordinate,index) => (index ? 'L' : 'M') + projection(coordinate)!.join(',')).join('') + 'Z')).join(''),
-        point, x:point[0], y:point[1], width:region.name.length * 11 + 8,
-        area: SEOUL_AREAS.find(area => area.sigunguCode === region.code)!,
+    return metroMap.regions.map(region=>{
+      const coordinates=region.polygons.flatMap(p=>p.flat()).map(p=>projection(p as [number,number])!)
+      return {...region,point:projection(region.label as [number,number])!,
+        bounds:[Math.min(...coordinates.map(p=>p[0])),Math.min(...coordinates.map(p=>p[1])),Math.max(...coordinates.map(p=>p[0])),Math.max(...coordinates.map(p=>p[1]))],
+        path:region.polygons.flatMap(p=>p.map(r=>r.map((c,i)=>(i?'L':'M')+projection(c as [number,number])!.join(',')).join('')+'Z')).join(''),
       }
     })
-    // Labels have their own collision layout; geographic boundaries remain unchanged.
-    for (let pass = 0; pass < 100; pass++) {
-      let moved = false
-      for (let i = 0; i < regions.length; i++) for (let j = i+1; j < regions.length; j++) {
-        const a = regions[i], b = regions[j]
-        const overlapX = (a.width+b.width)/2 + 3 - Math.abs(a.x-b.x)
-        const overlapY = 24 - Math.abs(a.y-b.y)
-        if (overlapX <= 0 || overlapY <= 0) continue
-        moved = true
-        if (overlapX < overlapY) {
-          const shift = (overlapX/2+.1) * (a.x <= b.x ? -1 : 1)
-          a.x += shift; b.x -= shift
-        } else {
-          const shift = (overlapY/2+.1) * (a.y <= b.y ? -1 : 1)
-          a.y += shift; b.y -= shift
-        }
-      }
-      for (const region of regions) {
-        region.x = Math.max(region.width/2+6,Math.min(354-region.width/2,region.x))
-        region.y = Math.max(14,Math.min(316,region.y))
-      }
-      if (!moved) break
-    }
-    return regions
-  }, [])
-  if (!mapBundle) return <p role="status">{mapBundleMessage} 서울 전체 선택을 이용해 주세요.</p>
+  },[])
+  useEffect(()=>{
+    const svg=svgRef.current
+    if(!svg) return
+    const behavior=zoom<SVGSVGElement,unknown>()
+      .extent([[0,0],[WIDTH,HEIGHT]]).scaleExtent([1,24])
+      .translateExtent([[-WIDTH/2,-HEIGHT/2],[WIDTH*1.5,HEIGHT*1.5]])
+      .clickDistance(6).on('zoom',event=>setTransform(event.transform))
+    zoomRef.current=behavior
+    select(svg).call(behavior).on('dblclick.zoom',null)
+    return ()=>{select(svg).on('.zoom',null);zoomRef.current=null}
+  },[])
+  function changeZoom(factor:number) {
+    if(svgRef.current&&zoomRef.current) select(svgRef.current).call(zoomRef.current.scaleBy,factor)
+  }
+  function focus(sido?:string) {
+    if(!svgRef.current||!zoomRef.current) return
+    if(!sido) {select(svgRef.current).call(zoomRef.current.transform,zoomIdentity);return}
+    const regions=shapes.filter(r=>r.sido===sido)
+    const x0=Math.min(...regions.map(r=>r.bounds[0])),y0=Math.min(...regions.map(r=>r.bounds[1]))
+    const x1=Math.max(...regions.map(r=>r.bounds[2])),y1=Math.max(...regions.map(r=>r.bounds[3]))
+    const k=Math.min(24,Math.max(1,.85*Math.min(WIDTH/(x1-x0),HEIGHT/(y1-y0))))
+    select(svgRef.current).call(zoomRef.current.transform,zoomIdentity.translate(WIDTH/2-k*(x0+x1)/2,HEIGHT/2-k*(y0+y1)/2).scale(k))
+  }
+  // Keep labels at a readable screen size, revealing crowded names as the user zooms.
+  const labels: {id:string;x:number;y:number;width:number;region:typeof shapes[number]}[]=[]
+  const ordered=[...shapes].sort((a,b)=>Number(b.id===groupId)-Number(a.id===groupId)||Number(b.codes.some(c=>selectedCodes.has(c)))-Number(a.codes.some(c=>selectedCodes.has(c))))
+  for(const region of ordered) {
+    const [x,y]=transform.apply(region.point as [number,number]),width=region.name.length*10+10
+    if(x<width/2||x>WIDTH-width/2||y<14||y>HEIGHT-14) continue
+    if(labels.some(l=>Math.abs(x-l.x)<(width+l.width)/2+3&&Math.abs(y-l.y)<27)) continue
+    labels.push({id:region.id,x,y,width,region})
+  }
   return <div className={styles.wrap}>
-    <svg className={styles.map} viewBox="0 0 360 330" role="group" aria-label="서울 25개 자치구 선택 지도">
-      {shapes.map(region => <path key={region.code}
-        className={selectedCodes.has(region.code) ? styles.region + ' ' + styles.selected : styles.region}
-        d={region.path} fillRule="evenodd" role="button" tabIndex={0}
-        aria-pressed={selectedCodes.has(region.code)} aria-label={region.name}
-        onClick={() => onToggle(region.area)} onKeyDown={event => {
-          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onToggle(region.area) }
-        }} />)}
-      {shapes.filter(region => Math.hypot(region.x-region.point[0],region.y-region.point[1]) > 8).map(region =>
-        <line key={region.code} className={styles.leader} x1={region.point[0]} y1={region.point[1]} x2={region.x} y2={region.y} />)}
-      {shapes.map(region => <g key={region.code} className={selectedCodes.has(region.code) ? styles.labelButton + ' ' + styles.labelSelected : styles.labelButton}
-        aria-hidden="true" onClick={() => onToggle(region.area)}>
-        <rect x={region.x-region.width/2} y={region.y-12} width={region.width} height={24} rx={6} />
-        <text className={styles.label} x={region.x} y={region.y} textAnchor="middle" dominantBaseline="central">{region.name}</text>
-      </g>)}
-    </svg>
+    <div role="group" aria-label="지도 이동">
+      <button type="button" onClick={()=>focus()}>수도권 전체</button>
+      {METRO_SIDOS.map(s=><button key={s.code} type="button" onClick={()=>focus(s.code)}>{s.label} 확대</button>)}
+    </div>
+    <div className={styles.mapFrame}>
+      <svg ref={svgRef} className={styles.map} viewBox={'0 0 '+WIDTH+' '+HEIGHT} role="group" aria-label="서울 경기 인천 통합 지역 선택 지도">
+        <g transform={transform.toString()}>
+          {shapes.map(region=><path key={region.id}
+            className={region.codes.some(c=>selectedCodes.has(c)) ? styles.region+' '+styles.selected : styles.region}
+            d={region.path} fillRule="evenodd" vectorEffect="non-scaling-stroke" role="button" tabIndex={0}
+            aria-pressed={region.codes.some(c=>selectedCodes.has(c))} aria-label={METRO_SIDOS.find(s=>s.code===region.sido)!.label+' '+region.name}
+            onClick={()=>toggleGroup(region)} onKeyDown={event=>{
+              if(event.key==='Enter'||event.key===' ') {event.preventDefault();toggleGroup(region)}
+            }}><title>{region.name}</title></path>)}
+        </g>
+        {labels.map(({id,x,y,width,region})=><g key={id} aria-hidden="true"
+          className={region.codes.some(c=>selectedCodes.has(c)) ? styles.labelButton+' '+styles.labelSelected : styles.labelButton}
+          onClick={()=>toggleGroup(region)}>
+          <rect x={x-width/2} y={y-12} width={width} height={24} rx={6}/>
+          <text className={styles.label} x={x} y={y} textAnchor="middle" dominantBaseline="central">{region.name}</text>
+        </g>)}
+      </svg>
+      <div className={styles.zoomControls} role="group" aria-label="지도 배율">
+        <button type="button" aria-label="지도 확대" disabled={transform.k>=24} onClick={()=>changeZoom(1.6)}>+</button>
+        <button type="button" aria-label="지도 축소" disabled={transform.k<=1} onClick={()=>changeZoom(1/1.6)}>−</button>
+      </div>
+    </div>
+    <small>확대해 지역 선택 · 두 손가락으로 확대·축소</small>
+    {group ? <p className={styles.selection} aria-live="polite">{group.name} · {group.codes.filter(c=>selectedCodes.has(c)).length}/{group.codes.length} 선택</p> : null}
+    {group && group.codes.length>1 ? <div role="group" aria-label={group.name+' 세부 지역'}>{group.codes.map(code=>{const area=METRO_AREAS.find(a=>a.sigunguCode===code)!;return <button key={code} type="button" aria-pressed={selectedCodes.has(code)} onClick={()=>onToggle(area)}>{area.sigunguName}</button>})}</div> : null}
   </div>
 }

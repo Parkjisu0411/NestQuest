@@ -39,6 +39,7 @@ export function parseApiBody(raw: unknown): unknown {
 export async function requestApi(endpoint: Endpoint, params: Record<string, string>, signal?: AbortSignal, headers?: Record<string, string>): Promise<unknown> {
   signal?.throwIfAborted()
   try {
+    headers = ['list','basic','detail','trades'].includes(endpoint) ? { ...headers, 'Content-Type':'application/json; charset=UTF-8' } : headers
     let status: number; let raw: unknown
     if (isAndroidApp()) {
       const result = await CapacitorHttp.get({ url: ENDPOINTS[endpoint], params, headers, responseType: 'text', connectTimeout: 15000, readTimeout: 20000 })

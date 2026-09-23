@@ -10,7 +10,7 @@ describe('local provider proxy authorization',()=>{
     await apiProxy(request('geocode'),response())
     expect(fetchMock).toHaveBeenCalledWith('https://dapi.kakao.com/v2/local/search/address.json?query=test',expect.objectContaining({headers:{Authorization:'KakaoAK test-only'},redirect:'error'}))
     await apiProxy(request('list'),response())
-    expect(fetchMock.mock.calls[1][1]).toMatchObject({headers:undefined})
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({headers:{'Content-Type':'application/json; charset=UTF-8'}})
   })
   it('rejects non-loopback callers before any upstream request',async()=>{
     const fetchMock=vi.fn();vi.stubGlobal('fetch',fetchMock);const output=response()
